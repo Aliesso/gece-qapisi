@@ -89,6 +89,10 @@ h1{font-family:var(--display); font-weight:700; font-size:17px; margin:0; letter
 .breathe{transform-box:fill-box; transform-origin:center bottom; animation:breathe 3.8s ease-in-out infinite}
 .flash{opacity:0; animation:flash 2.6s 1s 1}
 .tv{animation:flicker 1.3s infinite}
+@keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(3px,1px)}}
+@keyframes fall{from{transform:translateY(0) rotate(0)}to{transform:translateY(260px) rotate(40deg)}}
+.shake{animation:shake .35s linear 6}
+.fall{transform-box:fill-box; transform-origin:center; animation:fall .9s .2s cubic-bezier(.5,0,1,1) forwards}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; animation-delay:0s!important}
 }
@@ -100,7 +104,7 @@ h1{font-family:var(--display); font-weight:700; font-size:17px; margin:0; letter
   <header>
     <div class="titles">
       <h1>Gecə Qapısı</h1>
-      <span class="ep">Bölüm 1</span>
+      <span class="ep" id="ep-label">Bölümlər</span>
     </div>
     <div class="toggles">
       <button class="tog" type="button" id="tog-sound" aria-pressed="true">Effektlər</button>
@@ -114,11 +118,12 @@ h1{font-family:var(--display); font-weight:700; font-size:17px; margin:0; letter
       <div class="choices" id="choices" hidden></div>
       <div class="end" id="end" hidden></div>
       <div class="start" id="start">
-        <p class="ask">Bölüm 1 · Qərar səninlə</p>
+        <p class="ask">Qərar səninlə</p>
         <h2>Gecə saat 03:17. Tanımadığın bir evdə gözlərini açırsan.</h2>
-        <p class="sub">Qulaqcıqla dinlə.</p>
+        <p class="sub">Qulaqcıqla dinlə. Bölüm seç:</p>
         <div class="choices">
-          <button class="choice primary" type="button" id="go">Başla<span>▶</span></button>
+          <button class="choice primary" type="button" data-ep="1">Bölüm 1 · Sona xalanın hekayəsi<span>▶</span></button>
+          <button class="choice" type="button" data-ep="2">Bölüm 2 · Ruhların köçü<span>▶</span></button>
         </div>
       </div>
     </div>
@@ -408,6 +413,195 @@ function mirror() {
 </svg>`;
 }
 
+/* ===== Bölüm 2 scenes: seen from Onyx the cat, so the camera sits low and everything is huge ===== */
+const catEyes = (x1, x2, y, rx = 4.5, ry = 5.5) =>
+  `<ellipse cx="${x1}" cy="${y}" rx="${rx}" ry="${ry}" fill="#f2c94c"/><ellipse cx="${x2}" cy="${y}" rx="${rx}" ry="${ry}" fill="#f2c94c"/>`;
+
+/* Your room from the floor: "big" = morning, "ghost" = Sona in the doorway, "panic" = night, scratched, red */
+function catRoom(mode) {
+  const night = mode !== "big", panic = mode === "panic";
+  const lines = [340, 380, 430, 490, 560].map(y => `<line x1="0" y1="${y}" x2="360" y2="${y}" stroke="${night ? '#161a24' : '#2c251b'}"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${night ? '#9fb3d9' : '#f3d9a0'}" stop-opacity="${night ? .18 : .4}"/><stop offset="1" stop-color="#f3d9a0" stop-opacity="0"/></linearGradient></defs>
+  <rect width="360" height="640" fill="${night ? '#0b0d13' : '#1a1712'}"/>
+  <g class="${panic ? 'shake' : 'push'}">
+    <rect x="0" y="300" width="360" height="340" fill="${night ? '#10131b' : '#241e16'}"/>
+    ${lines}
+    <polygon points="150,330 300,330 360,520 120,520" fill="url(#sun)"/>
+    <rect x="-20" y="0" width="230" height="250" fill="${night ? '#151a26' : '#2a2a3a'}"/>
+    <path d="M-20 250 L210 250 L210 270 C150 290 60 280 -20 290Z" fill="${night ? '#1c2333' : '#3a3d55'}"/>
+    <rect x="176" y="270" width="30" height="70" fill="#120f0c"/>
+    <rect x="250" y="20" width="96" height="310" fill="${night ? '#161b27' : '#2e261c'}" stroke="#0e0c09" stroke-width="4"/>
+    <circle cx="262" cy="180" r="6" fill="#8a7a5a"/>
+    ${mode === "ghost" ? `<g class="late" transform="translate(28 -212)">${ghostShape()}</g>` : ""}
+    ${panic ? `<path d="M262 250 L276 300 M272 246 L286 298 M282 248 L294 296 M40 120 L70 200 M52 116 L80 196" stroke="#6b5a40" stroke-width="2"/>
+      <rect width="360" height="640" fill="#5a0d0d" opacity=".25"/>` : ""}
+    <g fill="#050506"><ellipse cx="140" cy="370" rx="26" ry="18"/><ellipse cx="220" cy="370" rx="26" ry="18"/><rect x="114" y="370" width="52" height="280"/><rect x="194" y="370" width="52" height="280"/></g>
+    <g fill="none" stroke="#1d1d22" stroke-width="2"><path d="M128 362 v10 M140 359 v12 M152 362 v10 M208 362 v10 M220 359 v12 M232 362 v10"/></g>
+  </g>
+</svg>`;
+}
+
+/* The mirror: a black cat with yellow eyes looks back; "sona" adds your own body standing behind */
+function catMirror(mode) {
+  const sona = mode === "sona";
+  return `${SVG_OPEN}
+  <defs>
+    <linearGradient id="mg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3246"/><stop offset="1" stop-color="#121622"/></linearGradient>
+    <clipPath id="mc2"><rect x="80" y="40" width="200" height="380"/></clipPath>
+  </defs>
+  <rect width="360" height="640" fill="#14120f"/>
+  <rect x="0" y="420" width="360" height="220" fill="#1e1913"/>
+  <g class="push">
+    <rect x="80" y="40" width="200" height="380" fill="url(#mg2)"/>
+    <g clip-path="url(#mc2)">
+      <rect x="80" y="330" width="200" height="90" fill="#1a1d27"/>
+      ${sona ? `<g class="late"><rect x="148" y="40" width="30" height="300" fill="#07080b"/><rect x="184" y="40" width="30" height="300" fill="#07080b"/><path d="M136 40 L228 40 L224 130 L140 130Z" fill="#090a0e"/></g>` : ""}
+      <g fill="#050506">
+        <path d="M150 400 C140 340 160 310 180 310 C200 310 220 340 210 400Z"/>
+        <circle cx="180" cy="300" r="24"/>
+        <polygon points="160,290 158,262 176,280"/><polygon points="200,290 202,262 184,280"/>
+      </g>
+      <path d="M210 395 C250 395 250 350 236 340" stroke="#050506" stroke-width="8" fill="none" stroke-linecap="round"/>
+      ${catEyes(171, 189, 298)}
+      <rect x="170" y="294" width="2" height="9" fill="#050506"/><rect x="188" y="294" width="2" height="9" fill="#050506"/>
+    </g>
+    <rect x="80" y="40" width="200" height="380" fill="none" stroke="#3a3020" stroke-width="10"/>
+  </g>
+</svg>`;
+}
+
+/* Breakfast from under the table: "calm", "spider" (plates fly), "cry" (broken plates, mother crouched) */
+function kitchen(mode) {
+  const spider = mode === "spider", cry = mode === "cry";
+  const shards = [[90,470],[150,500],[210,480],[260,510],[120,540]].map(([x, y]) => `<polygon points="${x},${y} ${x+14},${y-4} ${x+8},${y+6}" fill="#e9e2d0" opacity=".8"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><radialGradient id="kl" cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#f3d9a0" stop-opacity=".35"/><stop offset="1" stop-color="#f3d9a0" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#17130f"/>
+  <rect width="360" height="640" fill="url(#kl)"/>
+  <g class="${spider ? 'shake' : 'push'}">
+    <rect x="0" y="380" width="360" height="260" fill="#221b14"/>
+    <rect x="-10" y="110" width="380" height="34" fill="#3a2c1e"/>
+    <path d="M-10 144 L370 144 L370 190 C300 200 60 200 -10 190Z" fill="#d9d0bc" opacity=".85"/>
+    <rect x="40" y="190" width="18" height="200" fill="#2a1f15"/><rect x="302" y="190" width="18" height="200" fill="#2a1f15"/>
+    ${cry ? `<path d="M40 390 C30 330 60 300 90 300 C120 300 130 340 120 390Z" fill="#2b2230"/><circle cx="88" cy="286" r="16" fill="#2b2230"/>`
+          : `<path d="M-10 150 L66 150 L76 400 L-10 400Z" fill="#2b2230"/>`}
+    <rect x="300" y="150" width="34" height="250" fill="#1c2230"/><rect x="338" y="150" width="34" height="250" fill="#1c2230"/>
+    ${cry ? "" : `<rect x="160" y="190" width="16" height="200" fill="#0e0f14"/><rect x="186" y="190" width="16" height="200" fill="#0e0f14"/>`}
+    ${spider ? `<g transform="translate(180 400)" stroke="#000" stroke-width="1.6"><path d="M-6 0 L-16 -8 M-6 2 L-18 0 M-6 4 L-16 10 M-4 5 L-12 14 M6 0 L16 -8 M6 2 L18 0 M6 4 L16 10 M4 5 L12 14"/><ellipse rx="7" ry="5" fill="#000"/><circle cx="0" cy="-7" r="4" fill="#000"/></g>
+      <g class="fall"><ellipse cx="110" cy="230" rx="22" ry="6" fill="#e9e2d0"/></g>
+      <g class="fall" style="animation-delay:.35s"><ellipse cx="240" cy="214" rx="18" ry="5" fill="#e9e2d0"/></g>
+      <g class="fall" style="animation-delay:.55s"><rect x="180" y="220" width="14" height="16" rx="3" fill="#c9c2b0"/></g>` : ""}
+    ${cry ? shards + `<rect x="220" y="350" width="60" height="10" fill="#2a1f15" transform="rotate(25 250 355)"/>` : ""}
+  </g>
+  ${spider ? `<rect width="360" height="640" fill="#ff3b2f" class="flash"/>` : ""}
+</svg>`;
+}
+
+/* Səadət's hideout: "raid" (door kicked in, two men down), "saadet" (gun on her), "shot" (your body falls) */
+function hideout(mode) {
+  const bricks = Array.from({length: 15}, (_, i) => `<line x1="0" y1="${20 + i * 24}" x2="360" y2="${20 + i * 24}" stroke="#1a1411"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><radialGradient id="bulb" cx="50%" cy="22%" r="60%"><stop offset="0" stop-color="${GLOW}" stop-opacity=".35"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#120e0c"/>
+  ${bricks}
+  <rect x="0" y="360" width="360" height="280" fill="#0d0a09"/>
+  <rect width="360" height="640" fill="url(#bulb)" class="flicker"/>
+  <line x1="180" y1="0" x2="180" y2="120" stroke="#222" stroke-width="2"/><circle cx="180" cy="128" r="8" fill="${GLOW}" class="flicker"/>
+  <g class="push">
+    <rect x="20" y="150" width="70" height="210" fill="${mode === 'raid' ? '#cfd8ea' : '#1a1512'}" opacity="${mode === 'raid' ? .45 : 1}"/>
+    ${mode === "saadet" ? `<path d="M196 300 C190 250 196 216 210 212 C224 216 230 250 224 300Z" fill="#0a0808"/><path d="M194 202 C194 176 226 176 226 202 L230 246 L190 246Z" fill="#0a0808"/>` : ""}
+    <rect x="110" y="300" width="170" height="14" fill="#3a2a1a"/><rect x="120" y="314" width="10" height="70" fill="#2a1f15"/><rect x="260" y="314" width="10" height="70" fill="#2a1f15"/>
+    <rect x="150" y="290" width="22" height="10" fill="#6f8a4a"/><rect x="176" y="288" width="22" height="12" fill="#7d9a52"/><rect x="214" y="291" width="20" height="9" fill="#6f8a4a"/>
+    ${mode === "raid" ? `<path d="M60 380 L170 370 L172 388 L58 396Z" fill="#050404"/><circle cx="50" cy="388" r="11" fill="#050404"/>
+      <path d="M200 372 L310 364 L312 382 L198 390Z" fill="#050404"/><circle cx="322" cy="372" r="11" fill="#050404"/>` : ""}
+    ${mode === "saadet" ? `<path d="M296 640 C296 420 306 360 330 352 C354 360 364 420 364 640Z" fill="#030303"/><circle cx="332" cy="330" r="22" fill="#030303"/>
+      <path d="M318 366 L238 354 L238 345 L318 354Z" fill="#030303"/><rect x="226" y="342" width="16" height="9" fill="#030303"/>` : ""}
+    ${mode === "shot" ? `<path d="M110 400 L250 392 L252 412 L108 420Z" fill="#030303"/><circle cx="266" cy="398" r="14" fill="#030303"/>
+      <path d="M196 396 C190 356 200 340 214 338 C228 340 236 356 232 396Z" fill="#0a0808"/><ellipse cx="214" cy="326" rx="12" ry="14" fill="#0a0808"/>
+      <rect x="40" y="180" width="30" height="180" fill="#030303"/><circle cx="55" cy="168" r="13" fill="#030303"/>
+      <rect width="360" height="640" fill="#5a0d0d" opacity=".25"/>` : ""}
+  </g>
+  ${mode !== "saadet" ? `<rect width="360" height="640" fill="#fff0c8" class="flash"/>` : ""}
+</svg>`;
+}
+
+/* The news: TV off, mother on the floor, father against the wall, Onyx between them */
+function griefRoom() {
+  return `${SVG_OPEN}
+  <defs><radialGradient id="gl" cx="20%" cy="45%" r="60%"><stop offset="0" stop-color="${GLOW}" stop-opacity=".3"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#0b0d12"/>
+  <g class="push">
+    <rect y="400" width="360" height="240" fill="#10131a"/>
+    <rect width="360" height="640" fill="url(#gl)"/>
+    <rect x="50" y="250" width="6" height="150" fill="#2a2016"/><polygon points="36,250 70,250 62,222 44,222" fill="${GLOW}" opacity=".8"/>
+    <rect x="280" y="300" width="80" height="56" fill="#07080b" stroke="#1c2130"/>
+    <path d="M232 400 C230 330 236 280 250 270 C264 280 270 330 268 400Z" fill="#06070a"/><circle cx="250" cy="256" r="15" fill="#06070a"/>
+    <path d="M100 400 C94 350 110 322 140 320 C166 322 176 350 170 400Z" fill="#06070a"/><circle cx="148" cy="318" r="15" fill="#06070a"/>
+    <rect x="118" y="352" width="8" height="12" fill="#cfd8ea" opacity=".8"/>
+    <g fill="#030304"><path d="M186 400 C180 370 190 356 202 356 C214 356 224 370 218 400Z"/><circle cx="202" cy="350" r="13"/><polygon points="192,345 190,330 200,341"/><polygon points="212,345 214,330 204,341"/></g>
+    ${catEyes(197, 207, 349, 2.4, 3)}
+  </g>
+</svg>`;
+}
+
+/* Animal shelter: bars in front, eyes glowing in the dark behind */
+function shelter() {
+  const eyes = [[60,140],[260,110],[300,250],[40,290],[140,90],[220,190]].map(([x, y], i) =>
+    `<g class="blink" style="animation-delay:${i * .4}s;animation-duration:${3 + i * .7}s"><ellipse cx="${x}" cy="${y}" rx="3" ry="2.4" fill="#b9d36a" opacity=".7"/><ellipse cx="${x + 12}" cy="${y}" rx="3" ry="2.4" fill="#b9d36a" opacity=".7"/></g>`).join("");
+  const bars = Array.from({length: 13}, (_, i) => `<rect x="${i * 30}" y="0" width="5" height="640" fill="#2a2e36"/>`).join("");
+  return `${SVG_OPEN}
+  <rect width="360" height="640" fill="#08090c"/>
+  <g class="push">
+    ${eyes}
+    <rect y="360" width="360" height="280" fill="#0e1014"/>
+    <g fill="#030304"><path d="M150 370 C140 320 160 290 180 290 C200 290 220 320 210 370Z"/><circle cx="180" cy="282" r="22"/><polygon points="162,272 160,246 176,264"/><polygon points="198,272 200,246 184,264"/></g>
+    ${catEyes(172, 188, 281, 4, 5)}
+  </g>
+  ${bars}
+  <rect y="60" width="360" height="6" fill="#2a2e36"/><rect y="390" width="360" height="6" fill="#2a2e36"/>
+</svg>`;
+}
+
+/* The dead man on a metal table: a hand rises, yellow cat eyes open */
+function manWake() {
+  return `${SVG_OPEN}
+  <defs><radialGradient id="mw" cx="50%" cy="30%" r="60%"><stop offset="0" stop-color="#9fb3d9" stop-opacity=".25"/><stop offset="1" stop-color="#9fb3d9" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#0a0b0e"/>
+  <rect width="360" height="640" fill="url(#mw)"/>
+  <line x1="180" y1="0" x2="180" y2="90" stroke="#1d2230" stroke-width="2"/>
+  <rect x="160" y="90" width="40" height="6" fill="#cfd8ea" class="flicker"/>
+  <g class="push">
+    <rect y="360" width="360" height="280" fill="#0e1014"/>
+    <rect x="50" y="330" width="260" height="10" fill="#4a5060"/><rect x="70" y="340" width="6" height="60" fill="#3a3f4a"/><rect x="284" y="340" width="6" height="60" fill="#3a3f4a"/>
+    <path d="M104 330 C110 304 150 298 170 306 C220 300 272 304 300 330Z" fill="#cfd2d8" opacity=".85"/>
+    <circle cx="86" cy="316" r="15" fill="#6b6258"/>
+    <rect x="296" y="320" width="14" height="8" fill="#e9e2d0" transform="rotate(-15 303 324)"/>
+    <g class="late"><path d="M200 306 C204 270 210 250 214 236 L222 238 C220 254 214 276 210 306Z" fill="#8d8478"/>${catEyes(80, 91, 313, 2.6, 3.2)}</g>
+  </g>
+</svg>`;
+}
+
+/* The road out of town: a man walks into the night */
+function road() {
+  const lamp = (x, y, h) => `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - h}" stroke="#1d2230" stroke-width="3"/><circle cx="${x}" cy="${y - h}" r="${h / 3}" fill="url(#rl)" class="flicker-slow"/><circle cx="${x}" cy="${y - h}" r="2.5" fill="${GLOW}"/>`;
+  return `${SVG_OPEN}
+  <defs>
+    <linearGradient id="rsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05070d"/><stop offset="1" stop-color="#141b2c"/></linearGradient>
+    <radialGradient id="rl"><stop offset="0" stop-color="${GLOW}" stop-opacity=".5"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="360" height="640" fill="url(#rsky)"/>
+  <circle cx="270" cy="110" r="22" fill="#e9e2d0" opacity=".8"/>
+  <g class="walk">
+    <rect y="300" width="360" height="340" fill="#0b0d12"/>
+    <polygon points="0,640 360,640 196,300 164,300" fill="#141822"/>
+    <line x1="180" y1="305" x2="180" y2="640" stroke="#3a3f4a" stroke-width="3" stroke-dasharray="14 18"/>
+    ${lamp(60, 420, 150)}${lamp(130, 330, 60)}${lamp(300, 420, 150)}${lamp(230, 330, 60)}
+    <g fill="#030304"><circle cx="180" cy="300" r="9"/><path d="M168 312 C168 300 192 300 192 312 L190 352 L170 352Z"/><path d="M171 352 L168 384 L175 384 L180 356 L185 384 L192 384 L189 352Z"/></g>
+  </g>
+</svg>`;
+}
+
 /* ---------- Audio: generated with Web Audio, no files ---------- */
 const A = {ctx: null, master: null, noise: null, amb: null, on: true};
 
@@ -494,6 +688,25 @@ const sfx = {
       sfx.thump(delay + d, .3);
     });
   },
+  meow(delay = 0) {
+    if (!A.ctx) return; const t = now() + delay;
+    const o = A.ctx.createOscillator(); o.type = "sawtooth";
+    o.frequency.setValueAtTime(480, t); o.frequency.linearRampToValueAtTime(820, t + .18); o.frequency.linearRampToValueAtTime(560, t + .6);
+    const f = filt("bandpass", 900, 3);
+    f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(1800, t + .2); f.frequency.linearRampToValueAtTime(800, t + .6);
+    const g = envGain(t, .14, .05, .6); o.connect(f).connect(g).connect(A.master); o.start(t); o.stop(t + .7);
+  },
+  crash(delay = 0) {
+    if (!A.ctx) return;
+    [0, .12, .3, .45].forEach((d, i) => {
+      const t = now() + delay + d, n = noiseSrc(), g = envGain(t, .22, .002, .25);
+      n.connect(filt("highpass", 2500)).connect(g).connect(A.master); n.start(t); n.stop(t + .3);
+      const o = A.ctx.createOscillator(); o.type = "sine"; o.frequency.value = 2600 + i * 700;
+      const og = envGain(t, .05, .002, .4); o.connect(og).connect(A.master); o.start(t); o.stop(t + .45);
+    });
+    sfx.thump(delay, .4);
+  },
+  knock(delay = 0) { [0, .3, .6].forEach(d => sfx.thump(delay + d, .5)); },
   breath(delay = 0) {
     if (!A.ctx) return;
     [0, 2.2, 4.4].forEach(d => {
@@ -583,10 +796,74 @@ const S = {
     lines: ["Dəhlizdə, o taxtanın üstündə bir kağız var.", "Xətt titrəkdir, mürəkkəb hələ qurumayıb.", "«Mənə kömək etmək üçün axşam yuxuya get. Mən səni öz yanıma çəkəcəm.»"],
     choices: [["Axşam yuxuya get", "sleep"], ["Kağızı yandır", "burn"]] },
   sleep: { end: "Bədən", svg: () => bedroom("end"), amb: "listen", fx: () => sfx.whisper(4),
-    lines: ["Axşam gözlərini yumursan. Xışıltı yaxınlaşır.", "«Sağ ol,» — Sona xala pıçıldayır. — «İndi əllərim olacaq.»", "Yataqda gözlərin açılır. Amma onları sən açmırsan."] },
+    lines: ["Axşam gözlərini yumursan. Xışıltı yaxınlaşır.", "«Sağ ol,» — Sona xala pıçıldayır. — «Artıq bədənin mənim ruhumdur.»", "«Sənin ruhun isə evindəki çox sevimli pişiyinin içindədir.»", "Yataqda gözlərin açılır. Amma onları sən açmırsan."] },
   burn: { end: "Əks", svg: mirror, amb: "off",
-    lines: ["Kağız alovlanır. Pıçıltılar susur.", "Gecə su içməyə qalxırsan, güzgünün qarşısından keçirsən.", "Əksin dayanır. Sənə baxıb gülümsəyir. Sən gülümsəmirsən."] }
+    lines: ["Kağız alovlanır. Pıçıltılar susur.", "Gecə su içməyə qalxırsan, güzgünün qarşısından keçirsən.", "Əksin dayanır. Sənə baxıb gülümsəyir. Sən gülümsəmirsən."] },
+
+  /* ===== Bölüm 2 · Ruhların köçü ===== */
+  wake: { svg: () => catRoom("big"), amb: "day",
+    lines: ["Səhər. Gözlərini açırsan.", "Hər şey nəhəngdir: yatağın ayağı divar kimidir, qapının dəstəyi əlçatmazdır.", "Ayağa qalxanda yerə dörd ayaq üstə basırsan."],
+    choices: [["Güzgüyə get", "mirror2"], ["Səslən", "meow"]] },
+  meow: { svg: () => catRoom("big"), amb: "day", fx: () => sfx.meow(1.2),
+    lines: ["«Ana!» deyə qışqırmaq istəyirsən.", "Boğazından yalnız nazik bir səs çıxır: «Miyav.»", "Qorxuya düşüb güzgüyə tərəf qaçırsan."],
+    choices: [["Güzgüyə bax", "mirror2"]] },
+  mirror2: { svg: () => catMirror("cat"), amb: "day",
+    lines: ["Güzgüdən sənə iki sarı göz baxır.", "Qara tük, kiçik qulaqlar… Bu Onyxdur. Sənin sevimli pişiyin.", "Ruh sənindir, amma bədən onundur. Danışa bilmirsən."],
+    choices: [["Arxana bax", "sona2"]] },
+  sona2: { svg: () => catMirror("sona"), amb: "listen", fx: () => sfx.whisper(2),
+    lines: ["Arxanda sən dayanmısan. Sənin bədənin. Amma baxışı yaddır.", "«Qorxma,» — Sona xala sənin səsinlə deyir. — «Bu sadəcə müvəqqətidir.»", "«Bədənindən istifadə edib intiqamımı alacağam. Sonra hər şey əvvəlki kimi olacaq.»"],
+    choices: [["«Belə razılaşmamışdıq!»", "deal2"]] },
+  deal2: { svg: () => catMirror("sona"), amb: "listen", fx: () => sfx.meow(.3),
+    lines: ["Sən miyovlayırsan, amma Sona hər sözünü eşidir:", "«Mən sənə kömək edəcəkdim! Bu aləmdə sənin qolun olacaqdım!»", "Sona gülümsəyir: «Elə də oldu. Sadəcə belə olacağını düşünmürdün.»"],
+    choices: [["Onun arxasınca get", "breakfast"]] },
+  breakfast: { svg: () => kitchen("calm"), amb: "day",
+    lines: ["Sənin bədənin səhər yeməyinə gedir. Sən də arxasınca qaçırsan.", "Sən heç vaxt çaya şəkər atmazdın. «Sən» isə beş qaşıq atır, susub boşluğa baxır.", "Ana atana pıçıldayır: «Yəqin yenə depressiyadır…»"],
+    choices: [["Stolun altına gir", "spider"], ["Anaya sürtün", "spider"]] },
+  spider: { svg: () => kitchen("spider"), amb: "run", fx: () => sfx.crash(.4),
+    lines: ["Yerdə bir hörümçək qaçır.", "Sənin bədənin qorxub qışqırır və stolun üstündəki hər şeyi yerə çırpır.", "«Nə oldu?!» Cavab vermədən qapını çırpıb evdən çıxır."],
+    choices: [["Ona səslən", "cry"]] },
+  cry: { svg: () => kitchen("cry"), amb: "off", fx: () => sfx.meow(.8),
+    lines: ["«Qayıt!» — qışqırırsan. Amma ailən səni eşitmir. Yalnız miyovlama.", "Ana ağlayır: «O axı hörümçəkləri sevirdi… Birdən-birə nə oldu?»", "Sən bilirsən nə olub. Amma deyə bilmirsən."],
+    choices: [["Bu vaxt şəhərin o biri başında…", "raid"]] },
+  raid: { svg: () => hideout("raid"), amb: "run", fx: () => sfx.shots(.8),
+    lines: ["Sona Səadətgilin yerini tapıb. Sənin əllərində silah var.", "Qapını təpiklə açır. İki adam yerə yıxılır.", "Səadətin otağı dəhlizin sonundadır."],
+    choices: [["Otağa gir", "saadet"]] },
+  saadet: { svg: () => hideout("saadet"), amb: "corridor",
+    lines: ["Səadət masanın arxasında o adamlarla birgə pul sayır. Demə, onlarla əlbir imiş.", "Silah ona tuşlanır. «Qızım… Səadət.»", "Səadət gülür: «Sən kimsən?» — «Mən sənin ananam.»"],
+    choices: [["Uşaqlıq adı ilə səslən", "proof"], ["Bir xatirə danış", "proof"]] },
+  proof: { svg: () => hideout("saadet"), amb: "listen",
+    lines: ["«Balaca olanda səni «Sadəm» çağırardım. Altı yaşında ərik ağacından yıxılıb qolunu sındırmışdın.»", "Səadət donur. 22 yaşlı bir gənc bunları haradan bilə bilər?", "Gözləri dolur. Anasını tanıyır, şoka düşüb yerə yıxılır."],
+    choices: [["Səadətə yaxınlaş", "shot"]] },
+  shot: { svg: () => hideout("shot"), amb: "off", fx: () => { sfx.creak(0); sfx.thump(1.4, .7); },
+    lines: ["Arxada qapı cırıldayır. Bir güllə.", "Sənin bədənin yerə çırpılır.", "Səadət ağlayaraq qışqırır: «O mənim anam idi!» — və öz adamını vurur."],
+    choices: [["Evdə Onyx gözləyir", "ghostHome"]] },
+  ghostHome: { svg: () => catRoom("ghost"), amb: "listen", fx: () => sfx.whisper(3),
+    lines: ["Axşam. Pişik bədənində qapının ağzında gözləyirsən.", "Sona xala qayıdır. Bu dəfə yenə kölgədir.", "«Bağışla məni… Bədənini orada öldürdüm. Sən artıq bu pişiyin bədənində həbssən.»"],
+    choices: [["Ona hücum et", "panic"], ["Qaç", "panic"]] },
+  panic: { svg: () => catRoom("panic"), amb: "run", fx: () => { sfx.meow(0); sfx.meow(.9); sfx.crash(1.6); },
+    lines: ["Şoka düşürsən. Divardan divara atılırsan, pərdələri cırırsan.", "Sona xala yoxa çıxıb. Otaqda yalnız sənin miyovlaman qalır.", "Üç gün keçir."],
+    choices: [["Qapı döyülür", "news"]] },
+  news: { svg: griefRoom, amb: "off", fx: () => sfx.knock(.3),
+    lines: ["Polis gəlib. Sənin bədənini tapıblar.", "Ana yerə çökür. Ata divara söykənib ağlayır.", "Sən onların ayaqları arasında dayanmadan danışırsan: «Mən buradayam!» Onlar yalnız miyovlama eşidir."],
+    choices: [["Danışmağa davam et", "days"]] },
+  days: { svg: griefRoom, amb: "off", fx: () => { sfx.meow(.5); sfx.meow(2.5); },
+    lines: ["Günlər keçir. Sən susmursan.", "Ata əsəbiləşir: «Oğlumuz yoxdur. Bu pişiyə kim baxacaq?»", "Səni səbətə qoyub küçə heyvanları sığınacağına aparırlar."],
+    choices: [["Səbətdən çıxmağa çalış", "shelter"]] },
+  shelter: { svg: shelter, amb: "off", fx: () => sfx.meow(3),
+    lines: ["Dəmir barmaqlıqlar. Qaranlıqda onlarla parlayan göz.", "Bir neçə gün keçir. Artıq heç kim səni axtarmır.", "Amma şəhərin o biri başında qəribə bir şey baş verir…"],
+    choices: [["Bax", "awaken"]] },
+  awaken: { svg: manWake, amb: "listen", fx: () => sfx.breath(2),
+    lines: ["Səadətin öldürdüyü adamın soyuq bədənində barmaqlar tərpənir.", "İndi onun içində başqa bir ruh var: əsl Onyx. Sənin pişiyin.", "Əllərinə baxır. Özünü dərk etməyə başlayır."],
+    choices: [["Onyx ayağa qalxır", "road"]] },
+  road: { end: "Onyx yola düşür", svg: road, amb: "corridor", fx: () => sfx.steps(10, .6),
+    lines: ["Onyx səni sevirdi. Sənə bağlı idi.", "İndi insan bədənində, gecənin içində yola düşür.", "Səni tapmaq. Səni xilas etmək üçün…"] }
 };
+
+const EPISODES = {
+  1: {start: "start", name: "Sona xalanın hekayəsi"},
+  2: {start: "wake", name: "Ruhların köçü"}
+};
+let ep = 1;
 
 const $ = id => document.getElementById(id);
 const stage = $("stage"), sceneEl = $("scene"), cap = $("cap"), choicesEl = $("choices"),
@@ -649,12 +926,34 @@ function showChoices(sc) {
 
 function showEnd(sc) {
   sfx.boom();
-  endEl.innerHTML = `<p class="ask">Bölüm 1 bitdi · Son: ${sc.end}</p>
-    <h2>Növbəti bölüm bu seçimdən başlayır.</h2>
+  const next = ep + 1, hasNext = !!EPISODES[next];
+  endEl.innerHTML = `<p class="ask">Bölüm ${ep} bitdi · Son: ${sc.end}</p>
+    <h2>${hasNext ? `Hekayə Bölüm ${next}-də davam edir.` : `Davamı Bölüm ${next}-də…`}</h2>
     <p class="path">Seçimlərin: ${picks.join(" → ")}</p>
-    <button class="choice" type="button" id="restart">Yenidən başla<span>↺</span></button>`;
+    ${hasNext ? `<button class="choice primary" type="button" id="next-ep">Bölüm ${next}-yə keç<span>▶</span></button>` : ""}
+    <button class="choice" type="button" id="restart">Yenidən başla<span>↺</span></button>
+    <button class="choice" type="button" id="menu">Bölümlər<span>☰</span></button>`;
   endEl.hidden = false;
-  $("restart").addEventListener("click", e => { e.stopPropagation(); sfx.select(); path = []; picks = []; play("start"); });
+  const on = (id, fn) => $(id)?.addEventListener("click", e => { e.stopPropagation(); sfx.select(); fn(); });
+  on("next-ep", () => startEpisode(next));
+  on("restart", () => startEpisode(ep));
+  on("menu", toMenu);
+}
+
+function startEpisode(n) {
+  ep = n; path = []; picks = [];
+  $("ep-label").textContent = `Bölüm ${n} · ${EPISODES[n].name}`;
+  startEl.hidden = true; started = true;
+  play(EPISODES[n].start);
+}
+
+function toMenu() {
+  runId++; stopAmbient();
+  started = false; skip = false; path = []; picks = [];
+  cap.innerHTML = ""; bars.innerHTML = ""; choicesEl.hidden = true; endEl.hidden = true;
+  sceneEl.innerHTML = corridor();
+  $("ep-label").textContent = "Bölümlər";
+  startEl.hidden = false;
 }
 
 /* ---------- Controls ---------- */
@@ -666,10 +965,9 @@ function begin(e) {
   e.stopPropagation();
   audioInit(); A.ctx?.resume?.();
   setSound(A.on);
-  startEl.hidden = true; started = true;
-  play("start");
+  startEpisode(Number(e.currentTarget.dataset.ep));
 }
-$("go").addEventListener("click", begin);
+document.querySelectorAll("[data-ep]").forEach(b => b.addEventListener("click", begin));
 $("tog-sound").addEventListener("click", () => { audioInit(); A.ctx?.resume?.(); setSound(!A.on); });
 
 function skipNow() { if (!started) return; skip = true; }
