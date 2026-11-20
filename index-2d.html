@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Gecə Qapısı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@500;600&display=swap">
+<style>
+/* Layout: one 9:16 story stage, centered; captions and choices sit over the bottom of the scene */
+:root{
+  --bg:#0b0d12; --ink:#ece6d8; --dim:#8b90a0; --glow:#f2b84b; --panel:#151925; --danger:#d0503f;
+  --display:"Unbounded",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--body);
+  display:flex; flex-direction:column; align-items:center; gap:12px; box-sizing:border-box;
+  padding-block:18px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.frame{width:min(100%,400px,calc((100dvh - 150px) * 0.5625)); min-width:240px; display:grid; gap:10px}
+header{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+.titles{display:grid; gap:2px}
+h1{font-family:var(--display); font-weight:700; font-size:17px; margin:0; letter-spacing:.02em}
+.ep{font:500 11px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+.toggles{display:flex; gap:6px}
+.tog{font:500 11px var(--mono); letter-spacing:.06em; color:var(--dim); background:transparent; cursor:pointer;
+  border:1px solid #2a3040; border-radius:999px; padding:6px 10px}
+.tog[aria-pressed="true"]{color:var(--bg); background:var(--glow); border-color:var(--glow)}
+.tog:focus-visible{outline:2px solid var(--glow); outline-offset:2px}
+.stage{position:relative; width:100%; aspect-ratio:9/16; border-radius:18px; overflow:hidden; background:#000; cursor:pointer; outline:none}
+.stage:focus-visible{box-shadow:0 0 0 2px var(--glow)}
+.stage svg{position:absolute; inset:0; width:100%; height:100%; display:block}
+.bars{position:absolute; top:10px; left:12px; right:12px; display:flex; gap:4px; z-index:3}
+.bar{flex:1; height:3px; border-radius:2px; background:rgba(236,230,216,.22); overflow:hidden}
+.bar i{display:block; height:100%; width:0; background:var(--ink); transition:width .2s linear}
+.overlay{position:absolute; left:0; right:0; bottom:0; z-index:2; display:grid; gap:12px;
+  padding:70px 18px 18px; background:linear-gradient(to bottom,transparent,rgba(5,6,10,.9) 38%)}
+.cap{display:grid; gap:6px; min-height:5.2em}
+.cap:empty{min-height:0}
+.cap p{margin:0; font:400 14.5px/1.5 var(--mono)}
+.cap p.old{color:var(--dim)}
+.cap p.cur::after{content:"▍"; color:var(--glow); animation:blink 1s steps(1) infinite}
+.choices{display:grid; gap:8px}
+.choice{display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%;
+  font:600 14px var(--body); color:var(--ink); text-align:left; cursor:pointer;
+  padding:13px 16px; border-radius:10px; border:1px solid rgba(242,184,75,.45); background:rgba(21,25,37,.88);
+  animation:rise .45s ease-out both}
+.choice:nth-child(3){animation-delay:.12s}
+.choice span{font:500 11px var(--mono); color:var(--glow); letter-spacing:.08em}
+.choice:hover,.choice:focus-visible{background:var(--glow); color:var(--bg); outline:none}
+.choice:hover span,.choice:focus-visible span{color:var(--bg)}
+.choice.primary{background:var(--glow); color:var(--bg)}
+.choice.primary span{color:var(--bg)}
+.ask{font:500 11px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--glow); margin:0}
+.end,.start{display:grid; gap:8px; animation:rise .5s ease-out both}
+.end h2,.start h2{font-family:var(--display); font-weight:500; font-size:19px; margin:0; text-wrap:balance}
+.end .path,.start .sub{font:400 12px/1.5 var(--mono); color:var(--dim); margin:0}
+.hint{font:400 12px/1.5 var(--mono); color:var(--dim); text-align:center; margin:0}
+
+@keyframes blink{50%{opacity:0}}
+@keyframes rise{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+@keyframes flicker{0%,100%{opacity:1}44%{opacity:.7}48%{opacity:.2}52%{opacity:.9}70%{opacity:.6}}
+@keyframes push{from{transform:scale(1)}to{transform:scale(1.2)}}
+@keyframes walk{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.05) translateY(5px)}}
+@keyframes run{0%,100%{transform:scale(1.04) translate(0,0)}25%{transform:scale(1.1) translate(-3px,4px)}75%{transform:scale(1.1) translate(3px,4px)}}
+@keyframes doorOpen{from{transform:scaleX(1)}to{transform:scaleX(.1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes wave{from{transform:scale(.4); opacity:.9}to{transform:scale(6); opacity:0}}
+.flicker{animation:flicker 2.8s infinite}
+.flicker-slow{animation:flicker 5.5s infinite}
+.push{transform-origin:180px 320px; animation:push 11s ease-out forwards}
+.walk{transform-origin:180px 320px; animation:walk 1.1s ease-in-out infinite}
+.run{transform-origin:180px 320px; animation:run .45s linear infinite}
+.door-open{transform-box:fill-box; transform-origin:left center; animation:doorOpen 2.4s .5s cubic-bezier(.6,0,.2,1) forwards}
+.door-static{transform-box:fill-box; transform-origin:left center; transform:scaleX(.1)}
+.beam{opacity:0; animation:fadeIn 2s 1.2s forwards}
+.late{opacity:0; animation:fadeIn 3s 4s forwards}
+.wave{transform-box:fill-box; transform-origin:center; animation:wave 2.4s ease-out infinite}
+.blink{animation:blink 1.2s steps(1) infinite}
+@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.07)}}
+@keyframes flash{0%,100%{opacity:0}3%{opacity:.4}6%{opacity:0}12%{opacity:.3}15%{opacity:0}33%{opacity:.35}36%{opacity:0}39%{opacity:.25}42%{opacity:0}58%{opacity:.3}61%{opacity:0}}
+.breathe{transform-box:fill-box; transform-origin:center bottom; animation:breathe 3.8s ease-in-out infinite}
+.flash{opacity:0; animation:flash 2.6s 1s 1}
+.tv{animation:flicker 1.3s infinite}
+@keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(3px,1px)}}
+@keyframes fall{from{transform:translateY(0) rotate(0)}to{transform:translateY(260px) rotate(40deg)}}
+.shake{animation:shake .35s linear 6}
+.fall{transform-box:fill-box; transform-origin:center; animation:fall .9s .2s cubic-bezier(.5,0,1,1) forwards}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; animation-delay:0s!important}
+}
+</style>
+
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div class="titles">
+      <h1>Gecə Qapısı</h1>
+      <span class="ep" id="ep-label">Bölümlər</span>
+    </div>
+    <div class="toggles">
+      <button class="tog" type="button" id="tog-sound" aria-pressed="true">Effektlər</button>
+    </div>
+  </header>
+  <div class="stage" id="stage" tabindex="0" aria-label="Hekayə səhnəsi. Mətni tez göstərmək üçün toxun.">
+    <div class="bars" id="bars"></div>
+    <div id="scene"></div>
+    <div class="overlay">
+      <div class="cap" id="cap" aria-live="polite"></div>
+      <div class="choices" id="choices" hidden></div>
+      <div class="end" id="end" hidden></div>
+      <div class="start" id="start">
+        <p class="ask">Qərar səninlə</p>
+        <h2>Gecə saat 03:17. Tanımadığın bir evdə gözlərini açırsan.</h2>
+        <p class="sub">Qulaqcıqla dinlə. Bölüm seç:</p>
+        <div class="choices">
+          <button class="choice primary" type="button" data-ep="1">Bölüm 1 · Sona xalanın hekayəsi<span>▶</span></button>
+          <button class="choice" type="button" data-ep="2">Bölüm 2 · Ruhların köçü<span>▶</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="hint" id="hint">Ekrana toxun: mətn dərhal görünsün</p>
+</div>
+
+<script>
+const GLOW = "#f2b84b";
+
+/* ---------- Scenes (SVG) ---------- */
+function corridor({group = "", red = false, extra = ""} = {}) {
+  const wl = red ? "#1e0f11" : "#121620", wr = red ? "#190c0e" : "#0f121a", fl = red ? "#1b0d0f" : "#151925";
+  const lines = [0.12, 0.3, 0.55, 0.85].map(t => {
+    const y = 390 + t * 250, xl = 150 - 150 * t, xr = 210 + 150 * t;
+    return `<line x1="${xl}" y1="${y}" x2="${xr}" y2="${y}" stroke="${red ? '#2c1416' : '#1f2431'}"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="spill" cx="50%" cy="0%" r="80%"><stop offset="0" stop-color="${GLOW}" stop-opacity=".6"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient>
+    <radialGradient id="lampg"><stop offset="0" stop-color="${red ? '#ff6a55' : '#cfd8ea'}" stop-opacity=".35"/><stop offset="1" stop-color="#cfd8ea" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="360" height="640" fill="#06070a"/>
+  <g class="${group}">
+    <polygon points="0,0 360,0 210,250 150,250" fill="#0a0c11"/>
+    <polygon points="0,0 150,250 150,390 0,640" fill="${wl}"/>
+    <polygon points="360,0 210,250 210,390 360,640" fill="${wr}"/>
+    <polygon points="0,640 360,640 210,390 150,390" fill="${fl}"/>
+    ${lines}
+    <polygon points="40,150 90,212 90,450 40,560" fill="#0b0d13" stroke="#1c2130"/>
+    <polygon points="320,150 270,212 270,450 320,560" fill="#0b0d13" stroke="#1c2130"/>
+    <rect x="150" y="250" width="60" height="140" fill="#0b0d13"/>
+    <rect x="160" y="272" width="40" height="110" fill="#1c212d" stroke="#2b3242"/>
+    <circle cx="194" cy="330" r="1.6" fill="${GLOW}" opacity=".8"/>
+    <rect x="160" y="380" width="40" height="2.5" fill="${GLOW}" class="flicker"/>
+    <ellipse cx="180" cy="394" rx="70" ry="16" fill="url(#spill)" class="flicker"/>
+    <line x1="180" y1="0" x2="180" y2="88" stroke="#1d2230" stroke-width="2"/>
+    <rect x="171" y="88" width="18" height="6" fill="${red ? '#ff6a55' : '#cfd8ea'}" class="flicker-slow"/>
+    <circle cx="180" cy="100" r="80" fill="url(#lampg)" class="flicker-slow"/>
+    ${extra}
+  </g>
+</svg>`;
+}
+
+function room(mode) {
+  const dark = mode === "dark", listen = mode === "listen";
+  const waves = dark ? "" : [0, .8, 1.6].map(d =>
+    `<circle cx="180" cy="424" r="10" fill="none" stroke="#3b2814" stroke-width="1.5" class="wave" style="animation-delay:${d}s"/>`).join("");
+  const shadow = listen ? `<g class="late"><ellipse cx="248" cy="250" rx="16" ry="19" fill="#0a0806"/><path d="M222 540 C222 330 230 275 248 272 C266 275 274 330 274 540Z" fill="#0a0806"/></g>` : "";
+  return `<svg viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="roomg" cx="50%" cy="68%" r="70%"><stop offset="0" stop-color="${dark ? '#14161d' : '#f6d58e'}"/><stop offset="1" stop-color="${dark ? '#07080b' : '#8a5a22'}"/></radialGradient>
+  </defs>
+  <rect width="360" height="640" fill="#0f121a"/>
+  <g class="${mode === 'enter' ? 'push' : ''}">
+    <rect x="0" y="560" width="360" height="80" fill="#141824"/>
+    <rect x="80" y="130" width="200" height="410" fill="url(#roomg)"/>
+    <line x1="80" y1="470" x2="280" y2="470" stroke="${dark ? '#1a1c24' : '#a7742f'}"/>
+    <rect x="130" y="440" width="100" height="8" fill="#2a1d12"/>
+    <rect x="137" y="448" width="5" height="70" fill="#2a1d12"/>
+    <rect x="218" y="448" width="5" height="70" fill="#2a1d12"/>
+    ${waves}
+    <rect x="152" y="408" width="56" height="32" rx="4" fill="#4a3320"/>
+    <circle cx="168" cy="424" r="7" fill="#2a1d12" stroke="${dark ? '#3a2a1c' : GLOW}"/>
+    <rect x="184" y="416" width="18" height="3" fill="#1a120b"/>
+    <rect x="184" y="425" width="18" height="3" fill="#1a120b"/>
+    ${dark ? `<circle cx="200" cy="434" r="2.2" fill="#ff4a3a" class="blink"/>` : ""}
+    ${shadow}
+    <g class="${mode === 'enter' ? 'door-open' : 'door-static'}">
+      <rect x="80" y="130" width="200" height="410" fill="#1c212d"/>
+      <rect x="100" y="155" width="160" height="160" fill="none" stroke="#262c3a" stroke-width="3"/>
+      <rect x="100" y="345" width="160" height="170" fill="none" stroke="#262c3a" stroke-width="3"/>
+      <circle cx="262" cy="335" r="5" fill="#8a7a5a"/>
+    </g>
+    <rect x="80" y="130" width="200" height="410" fill="none" stroke="#2b3242" stroke-width="8"/>
+    ${dark ? "" : `<polygon points="80,540 280,540 360,640 0,640" fill="${GLOW}" opacity=".2" class="beam"/>`}
+  </g>
+</svg>`;
+}
+
+const SVG_OPEN = `<svg viewBox="0 0 360 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">`;
+
+/* Old woman's silhouette (headscarf), used for Sona xala's ghost */
+const ghostShape = (dx = 0) => `<path transform="translate(${dx} 0)" d="M270 250 C252 250 248 272 252 290 L240 330 C232 400 236 470 230 540 L310 540 C304 470 308 400 300 330 L288 290 C292 272 288 250 270 250Z" fill="#040506" opacity=".92"/>`;
+
+/* Sona xala's bedridden husband */
+function sickroom() {
+  return `${SVG_OPEN}
+  <defs>
+    <radialGradient id="lampw"><stop offset="0" stop-color="${GLOW}" stop-opacity=".45"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient>
+    <linearGradient id="moonl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb3d9" stop-opacity=".22"/><stop offset="1" stop-color="#9fb3d9" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="360" height="640" fill="#0d0f15"/>
+  <g class="push"><g transform="translate(0 -70)">
+    <rect x="0" y="470" width="360" height="240" fill="#12151d"/>
+    <rect x="215" y="130" width="100" height="140" fill="#16203a" stroke="#232a3a" stroke-width="6"/>
+    <line x1="265" y1="130" x2="265" y2="270" stroke="#232a3a" stroke-width="4"/>
+    <circle cx="290" cy="165" r="12" fill="#cfd8ea" opacity=".5"/>
+    <polygon points="215,270 315,270 300,520 120,520" fill="url(#moonl)"/>
+    <rect x="44" y="222" width="46" height="58" fill="#2a2016" stroke="#4a3a24" stroke-width="3"/>
+    <ellipse cx="67" cy="246" rx="9" ry="11" fill="#1a130c"/>
+    <path d="M52 278 C52 262 82 262 82 278Z" fill="#1a130c"/>
+    <path d="M76 220 L92 220 L92 236Z" fill="#000"/>
+    <circle cx="70" cy="380" r="90" fill="url(#lampw)" class="flicker-slow"/>
+    <rect x="36" y="400" width="66" height="70" fill="#1a1510"/>
+    <rect x="63" y="372" width="12" height="28" fill="#3a2a18"/>
+    <polygon points="56,372 82,372 76,352 62,352" fill="${GLOW}" opacity=".85" class="flicker-slow"/>
+    <rect x="42" y="386" width="8" height="14" rx="2" fill="#c9c2b0" opacity=".7"/>
+    <rect x="86" y="382" width="9" height="18" rx="2" fill="#a14b3a" opacity=".8"/>
+    <rect x="112" y="340" width="12" height="150" fill="#2a2016"/>
+    <rect x="118" y="440" width="216" height="32" fill="#2b2620"/>
+    <rect x="124" y="472" width="8" height="20" fill="#2a2016"/><rect x="322" y="472" width="8" height="20" fill="#2a2016"/>
+    <ellipse cx="152" cy="432" rx="30" ry="12" fill="#cfc6b4" opacity=".55"/>
+    <circle cx="160" cy="418" r="15" fill="#8d7f6c"/>
+    <path d="M178 446 C190 412 300 414 334 440 L334 446Z" fill="#4a4436" class="breathe"/>
+</g>
+  </g>
+</svg>`;
+}
+
+/* Looking out of the window: your own house across the street, someone in your window */
+function windowView() {
+  return `${SVG_OPEN}
+  <defs>
+    <linearGradient id="nsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070a14"/><stop offset="1" stop-color="#1a2238"/></linearGradient>
+    <radialGradient id="lamp2"><stop offset="0" stop-color="${GLOW}" stop-opacity=".5"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient>
+  </defs>
+  <g class="push">
+    <rect width="360" height="640" fill="url(#nsky)"/>
+    <rect x="0" y="380" width="360" height="260" fill="#0c0e13"/>
+    <rect x="0" y="372" width="360" height="10" fill="#161a24"/>
+    <polygon points="100,230 180,180 260,230" fill="#121520"/>
+    <rect x="100" y="230" width="160" height="150" fill="#141824"/>
+    <rect x="128" y="260" width="40" height="50" fill="#0a0c11"/>
+    <rect x="192" y="260" width="40" height="50" fill="${GLOW}" opacity=".85"/>
+    <g class="late"><ellipse cx="212" cy="280" rx="7" ry="8" fill="#1a1208"/><path d="M200 310 C200 292 224 292 224 310Z" fill="#1a1208"/></g>
+    <rect x="166" y="330" width="28" height="50" fill="#0a0c11"/>
+    <line x1="40" y1="380" x2="40" y2="250" stroke="#1d2230" stroke-width="3"/>
+    <circle cx="40" cy="250" r="40" fill="url(#lamp2)" class="flicker-slow"/>
+    <circle cx="40" cy="250" r="3" fill="${GLOW}"/>
+    <path fill-rule="evenodd" d="M0 0H360V640H0Z M70 130H290V470H70Z" fill="#0f1219"/>
+    <rect x="70" y="130" width="220" height="340" fill="none" stroke="#252b3a" stroke-width="10"/>
+    <line x1="180" y1="130" x2="180" y2="470" stroke="#252b3a" stroke-width="6"/>
+    <line x1="70" y1="300" x2="290" y2="300" stroke="#252b3a" stroke-width="6"/>
+    <rect x="50" y="470" width="260" height="14" fill="#1a1f2b"/>
+    <g opacity=".14" class="flicker-slow"><ellipse cx="180" cy="370" rx="22" ry="26" fill="#cfd8ea"/><path d="M140 470 C140 410 220 410 220 470Z" fill="#cfd8ea"/></g>
+  </g>
+</svg>`;
+}
+
+/* Your own living room: parents watching TV at 03:17; you stand there, translucent */
+function homeView() {
+  return `${SVG_OPEN}
+  <defs><radialGradient id="tvg" cx="85%" cy="55%" r="70%"><stop offset="0" stop-color="#6f9bff" stop-opacity=".45"/><stop offset="1" stop-color="#6f9bff" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#0b0e15"/>
+  <g class="push"><g transform="translate(0 -70)">
+    <rect x="0" y="470" width="360" height="240" fill="#10131b"/>
+    <circle cx="147" cy="167" r="17" fill="#141824" stroke="#262c3a" stroke-width="3"/>
+    <line x1="147" y1="167" x2="156" y2="169" stroke="#8b90a0" stroke-width="2.5"/>
+    <line x1="147" y1="167" x2="159" y2="170" stroke="#8b90a0" stroke-width="1.5"/>
+    <rect width="360" height="640" fill="url(#tvg)" class="tv"/>
+    <rect x="290" y="330" width="80" height="56" fill="#9fc0ff" opacity=".85" class="tv"/>
+    <rect x="300" y="386" width="60" height="84" fill="#141824"/>
+    <rect x="30" y="390" width="230" height="64" rx="14" fill="#161b28"/>
+    <circle cx="110" cy="372" r="17" fill="#07090d"/><path d="M84 420 C84 392 136 392 136 420Z" fill="#07090d"/>
+    <circle cx="190" cy="368" r="19" fill="#07090d"/><path d="M162 420 C162 390 218 390 218 420Z" fill="#07090d"/>
+    <path d="M110 355 a17 17 0 0 1 17 17" fill="none" stroke="#6f9bff" stroke-opacity=".6" stroke-width="2"/>
+    <path d="M190 349 a19 19 0 0 1 19 19" fill="none" stroke="#6f9bff" stroke-opacity=".6" stroke-width="2"/>
+    <rect x="22" y="440" width="246" height="40" rx="10" fill="#1b2130"/>
+    <rect x="30" y="480" width="10" height="16" fill="#0d1017"/><rect x="250" y="480" width="10" height="16" fill="#0d1017"/>
+</g>
+  </g>
+  <g opacity=".18" class="flicker-slow"><ellipse cx="60" cy="230" rx="22" ry="26" fill="#cfd8ea"/><path d="M20 400 C20 280 100 280 100 400Z" fill="#cfd8ea"/></g>
+</svg>`;
+}
+
+/* Your bedroom: "self" = you asleep, "ghost" = Sona xala in the corner, "end" = she leans over you */
+function bedroom(mode) {
+  const end = mode === "end";
+  const ghost = mode === "ghost" ? `<g class="late">${ghostShape()}</g>` : end ? `<g class="beam">${ghostShape(-150)}</g>` : "";
+  return `${SVG_OPEN}
+  <defs><linearGradient id="moonb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb3d9" stop-opacity=".25"/><stop offset="1" stop-color="#9fb3d9" stop-opacity="0"/></linearGradient></defs>
+  <rect width="360" height="640" fill="#0b0d13"/>
+  <g class="${mode === 'self' ? 'push' : ''}"><g transform="translate(0 -70)">
+    <rect x="0" y="470" width="360" height="240" fill="#11141c"/>
+    <rect x="40" y="130" width="100" height="140" fill="#16203a" stroke="#232a3a" stroke-width="6"/>
+    <line x1="90" y1="130" x2="90" y2="270" stroke="#232a3a" stroke-width="4"/>
+    <circle cx="66" cy="160" r="11" fill="#cfd8ea" opacity=".55"/>
+    <polygon points="40,270 140,270 300,470 80,470" fill="url(#moonb)"/>
+    <rect x="40" y="350" width="12" height="140" fill="#1c2232"/>
+    <rect x="46" y="440" width="270" height="32" fill="#1f2738"/>
+    <rect x="52" y="472" width="8" height="18" fill="#1c2232"/><rect x="304" y="472" width="8" height="18" fill="#1c2232"/>
+    <ellipse cx="88" cy="432" rx="30" ry="12" fill="#cdd5e4" opacity=".5"/>
+    <circle cx="96" cy="418" r="15" fill="#9a8f80"/>
+    <path d="M114 446 C126 410 280 412 316 440 L316 446Z" fill="#2c3a5a" class="breathe"/>
+    ${ghost}
+    ${end ? `<circle cx="91" cy="414" r="1.8" fill="${GLOW}" class="late"/><circle cx="101" cy="414" r="1.8" fill="${GLOW}" class="late"/>
+    <g class="beam"><rect width="360" height="640" fill="#5a0d0d" opacity=".3"/></g>` : ""}
+</g>
+  </g>
+</svg>`;
+}
+
+/* The night of the shooting: bullet holes, broken window, muzzle flashes */
+function bulletWall() {
+  const holes = [[70,180],[96,214],[250,160],[284,236],[150,290],[212,262],[310,330],[60,340],[180,200],[236,350],[300,200]].map(([x, y]) =>
+    `<circle cx="${x}" cy="${y}" r="3.2" fill="#030304"/><path d="M${x-9} ${y-3}L${x+8} ${y+4}M${x-2} ${y-9}L${x+3} ${y+8}" stroke="#2c3242" stroke-width="1"/>`).join("");
+  return `${SVG_OPEN}
+  <rect width="360" height="640" fill="#11141c"/>
+  <g class="push">
+    <rect x="0" y="470" width="360" height="170" fill="#0d1016"/>
+    <rect x="120" y="120" width="120" height="130" fill="#0a0f1d" stroke="#232a3a" stroke-width="6"/>
+    <polygon points="120,120 168,120 150,170 132,150 120,190" fill="#1d2840" opacity=".7"/>
+    <polygon points="240,250 240,190 214,230 200,250" fill="#1d2840" opacity=".7"/>
+    <g transform="rotate(-12 250 410)"><rect x="220" y="380" width="60" height="70" fill="#2a2016" stroke="#4a3a24" stroke-width="3"/><rect x="230" y="390" width="40" height="50" fill="#3a3024"/></g>
+    ${holes}
+    <g class="flicker-slow" opacity=".55"><ellipse cx="120" cy="330" rx="15" ry="18" fill="#050608"/><path d="M95 540 C95 400 105 360 120 352 C135 360 145 400 145 540Z" fill="#050608"/></g>
+  </g>
+  <rect width="360" height="640" fill="#fff0c8" class="flash"/>
+</svg>`;
+}
+
+/* Lifted floorboard in the corridor with the hidden money */
+const stash = () => `<polygon points="160,398 200,398 205,414 155,414" fill="#050403"/>
+  <ellipse cx="180" cy="406" rx="30" ry="9" fill="${GLOW}" opacity=".45" class="flicker-slow"/>
+  <rect x="164" y="402" width="12" height="6" fill="#8a6b2a"/><rect x="178" y="400" width="12" height="6" fill="#b08a3a"/><rect x="171" y="407" width="13" height="6" fill="#c9a24a"/>
+  <polygon points="155,396 200,396 196,380 160,388" fill="#2a2016" stroke="#3a2c1c"/>`;
+
+/* Morning: the house in grey daylight, bullet marks on the facade */
+function houseDay() {
+  const holes = [[108,400],[124,420],[250,410],[270,440],[230,292],[150,288]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#15161a"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><linearGradient id="dsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d6572"/><stop offset="1" stop-color="#a9aeb6"/></linearGradient></defs>
+  <rect width="360" height="640" fill="url(#dsky)"/>
+  <g class="push">
+    <circle cx="290" cy="150" r="60" fill="#e8e2d2" opacity=".25"/>
+    <rect x="0" y="520" width="360" height="120" fill="#2f3237"/>
+    <polygon points="50,270 180,190 310,270" fill="#26292f"/>
+    <rect x="60" y="270" width="240" height="260" fill="#45484f"/>
+    <rect x="90" y="310" width="56" height="64" fill="#1b1d22"/><rect x="214" y="310" width="56" height="64" fill="#1b1d22"/>
+    <line x1="118" y1="310" x2="118" y2="374" stroke="#45484f" stroke-width="4"/><line x1="242" y1="310" x2="242" y2="374" stroke="#45484f" stroke-width="4"/>
+    <rect x="156" y="420" width="48" height="110" fill="#1f2126"/>
+    <circle cx="196" cy="476" r="2.5" fill="#8a7a5a"/>
+    ${holes}
+    <path d="M20 520 L28 380 M28 420 L8 390 M27 400 L46 370 M24 450 L44 430" stroke="#1d1f23" stroke-width="4" fill="none"/>
+  </g>
+</svg>`;
+}
+
+/* The note left on the floorboard */
+function paper() {
+  const planks = Array.from({length: 9}, (_, i) => `<rect x="0" y="${i * 72}" width="360" height="70" fill="${i % 2 ? '#1d1610' : '#221a12'}"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><radialGradient id="torch" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#120d09"/>
+  ${planks}
+  <g class="push">
+    <g transform="rotate(-6 180 280)">
+      <rect x="66" y="130" width="228" height="290" fill="#d8cfb9"/>
+      <text font-family="IBM Plex Mono, monospace" font-size="17" font-style="italic" fill="#2a2018">
+        <tspan x="88" y="188">Mənə kömək</tspan><tspan x="88" dy="30">etmək üçün</tspan><tspan x="88" dy="30">axşam yuxuya get.</tspan>
+        <tspan x="88" dy="30">Mən səni öz</tspan><tspan x="88" dy="30">yanıma çəkəcəm.</tspan><tspan x="210" dy="44">— S.</tspan>
+      </text>
+    </g>
+  </g>
+  <rect width="360" height="640" fill="url(#torch)"/>
+</svg>`;
+}
+
+/* The mirror: your reflection smiles when you don't */
+function mirror() {
+  return `${SVG_OPEN}
+  <defs>
+    <radialGradient id="mglass" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#2a3246"/><stop offset="1" stop-color="#0c0f17"/></radialGradient>
+    <clipPath id="mclip"><ellipse cx="180" cy="270" rx="92" ry="136"/></clipPath>
+  </defs>
+  <rect width="360" height="640" fill="#0c0e14"/>
+  <g class="push">
+    <ellipse cx="180" cy="270" rx="92" ry="136" fill="url(#mglass)"/>
+    <g clip-path="url(#mclip)">
+      <ellipse cx="180" cy="250" rx="34" ry="42" fill="#07080c"/>
+      <path d="M100 420 C100 330 260 330 260 420Z" fill="#07080c"/>
+      <g class="late"><path d="M164 264 Q180 278 196 264" stroke="#e9e2d0" stroke-width="2" fill="none"/><circle cx="168" cy="242" r="2" fill="#e9e2d0"/><circle cx="192" cy="242" r="2" fill="#e9e2d0"/></g>
+    </g>
+    <ellipse cx="180" cy="270" rx="92" ry="136" fill="none" stroke="#3a3020" stroke-width="10"/>
+  </g>
+</svg>`;
+}
+
+/* ===== Bölüm 2 scenes: seen from Onyx the cat, so the camera sits low and everything is huge ===== */
+const catEyes = (x1, x2, y, rx = 4.5, ry = 5.5) =>
+  `<ellipse cx="${x1}" cy="${y}" rx="${rx}" ry="${ry}" fill="#f2c94c"/><ellipse cx="${x2}" cy="${y}" rx="${rx}" ry="${ry}" fill="#f2c94c"/>`;
+
+/* Your room from the floor: "big" = morning, "ghost" = Sona in the doorway, "panic" = night, scratched, red */
+function catRoom(mode) {
+  const night = mode !== "big", panic = mode === "panic";
+  const lines = [340, 380, 430, 490, 560].map(y => `<line x1="0" y1="${y}" x2="360" y2="${y}" stroke="${night ? '#161a24' : '#2c251b'}"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${night ? '#9fb3d9' : '#f3d9a0'}" stop-opacity="${night ? .18 : .4}"/><stop offset="1" stop-color="#f3d9a0" stop-opacity="0"/></linearGradient></defs>
+  <rect width="360" height="640" fill="${night ? '#0b0d13' : '#1a1712'}"/>
+  <g class="${panic ? 'shake' : 'push'}">
+    <rect x="0" y="300" width="360" height="340" fill="${night ? '#10131b' : '#241e16'}"/>
+    ${lines}
+    <polygon points="150,330 300,330 360,520 120,520" fill="url(#sun)"/>
+    <rect x="-20" y="0" width="230" height="250" fill="${night ? '#151a26' : '#2a2a3a'}"/>
+    <path d="M-20 250 L210 250 L210 270 C150 290 60 280 -20 290Z" fill="${night ? '#1c2333' : '#3a3d55'}"/>
+    <rect x="176" y="270" width="30" height="70" fill="#120f0c"/>
+    <rect x="250" y="20" width="96" height="310" fill="${night ? '#161b27' : '#2e261c'}" stroke="#0e0c09" stroke-width="4"/>
+    <circle cx="262" cy="180" r="6" fill="#8a7a5a"/>
+    ${mode === "ghost" ? `<g class="late" transform="translate(28 -212)">${ghostShape()}</g>` : ""}
+    ${panic ? `<path d="M262 250 L276 300 M272 246 L286 298 M282 248 L294 296 M40 120 L70 200 M52 116 L80 196" stroke="#6b5a40" stroke-width="2"/>
+      <rect width="360" height="640" fill="#5a0d0d" opacity=".25"/>` : ""}
+    <g fill="#050506"><ellipse cx="140" cy="370" rx="26" ry="18"/><ellipse cx="220" cy="370" rx="26" ry="18"/><rect x="114" y="370" width="52" height="280"/><rect x="194" y="370" width="52" height="280"/></g>
+    <g fill="none" stroke="#1d1d22" stroke-width="2"><path d="M128 362 v10 M140 359 v12 M152 362 v10 M208 362 v10 M220 359 v12 M232 362 v10"/></g>
+  </g>
+</svg>`;
+}
+
+/* The mirror: a black cat with yellow eyes looks back; "sona" adds your own body standing behind */
+function catMirror(mode) {
+  const sona = mode === "sona";
+  return `${SVG_OPEN}
+  <defs>
+    <linearGradient id="mg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3246"/><stop offset="1" stop-color="#121622"/></linearGradient>
+    <clipPath id="mc2"><rect x="80" y="40" width="200" height="380"/></clipPath>
+  </defs>
+  <rect width="360" height="640" fill="#14120f"/>
+  <rect x="0" y="420" width="360" height="220" fill="#1e1913"/>
+  <g class="push">
+    <rect x="80" y="40" width="200" height="380" fill="url(#mg2)"/>
+    <g clip-path="url(#mc2)">
+      <rect x="80" y="330" width="200" height="90" fill="#1a1d27"/>
+      ${sona ? `<g class="late"><rect x="148" y="40" width="30" height="300" fill="#07080b"/><rect x="184" y="40" width="30" height="300" fill="#07080b"/><path d="M136 40 L228 40 L224 130 L140 130Z" fill="#090a0e"/></g>` : ""}
+      <g fill="#050506">
+        <path d="M150 400 C140 340 160 310 180 310 C200 310 220 340 210 400Z"/>
+        <circle cx="180" cy="300" r="24"/>
+        <polygon points="160,290 158,262 176,280"/><polygon points="200,290 202,262 184,280"/>
+      </g>
+      <path d="M210 395 C250 395 250 350 236 340" stroke="#050506" stroke-width="8" fill="none" stroke-linecap="round"/>
+      ${catEyes(171, 189, 298)}
+      <rect x="170" y="294" width="2" height="9" fill="#050506"/><rect x="188" y="294" width="2" height="9" fill="#050506"/>
+    </g>
+    <rect x="80" y="40" width="200" height="380" fill="none" stroke="#3a3020" stroke-width="10"/>
+  </g>
+</svg>`;
+}
+
+/* Breakfast from under the table: "calm", "spider" (plates fly), "cry" (broken plates, mother crouched) */
+function kitchen(mode) {
+  const spider = mode === "spider", cry = mode === "cry";
+  const shards = [[90,470],[150,500],[210,480],[260,510],[120,540]].map(([x, y]) => `<polygon points="${x},${y} ${x+14},${y-4} ${x+8},${y+6}" fill="#e9e2d0" opacity=".8"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><radialGradient id="kl" cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#f3d9a0" stop-opacity=".35"/><stop offset="1" stop-color="#f3d9a0" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#17130f"/>
+  <rect width="360" height="640" fill="url(#kl)"/>
+  <g class="${spider ? 'shake' : 'push'}">
+    <rect x="0" y="380" width="360" height="260" fill="#221b14"/>
+    <rect x="-10" y="110" width="380" height="34" fill="#3a2c1e"/>
+    <path d="M-10 144 L370 144 L370 190 C300 200 60 200 -10 190Z" fill="#d9d0bc" opacity=".85"/>
+    <rect x="40" y="190" width="18" height="200" fill="#2a1f15"/><rect x="302" y="190" width="18" height="200" fill="#2a1f15"/>
+    ${cry ? `<path d="M40 390 C30 330 60 300 90 300 C120 300 130 340 120 390Z" fill="#2b2230"/><circle cx="88" cy="286" r="16" fill="#2b2230"/>`
+          : `<path d="M-10 150 L66 150 L76 400 L-10 400Z" fill="#2b2230"/>`}
+    <rect x="300" y="150" width="34" height="250" fill="#1c2230"/><rect x="338" y="150" width="34" height="250" fill="#1c2230"/>
+    ${cry ? "" : `<rect x="160" y="190" width="16" height="200" fill="#0e0f14"/><rect x="186" y="190" width="16" height="200" fill="#0e0f14"/>`}
+    ${spider ? `<g transform="translate(180 400)" stroke="#000" stroke-width="1.6"><path d="M-6 0 L-16 -8 M-6 2 L-18 0 M-6 4 L-16 10 M-4 5 L-12 14 M6 0 L16 -8 M6 2 L18 0 M6 4 L16 10 M4 5 L12 14"/><ellipse rx="7" ry="5" fill="#000"/><circle cx="0" cy="-7" r="4" fill="#000"/></g>
+      <g class="fall"><ellipse cx="110" cy="230" rx="22" ry="6" fill="#e9e2d0"/></g>
+      <g class="fall" style="animation-delay:.35s"><ellipse cx="240" cy="214" rx="18" ry="5" fill="#e9e2d0"/></g>
+      <g class="fall" style="animation-delay:.55s"><rect x="180" y="220" width="14" height="16" rx="3" fill="#c9c2b0"/></g>` : ""}
+    ${cry ? shards + `<rect x="220" y="350" width="60" height="10" fill="#2a1f15" transform="rotate(25 250 355)"/>` : ""}
+  </g>
+  ${spider ? `<rect width="360" height="640" fill="#ff3b2f" class="flash"/>` : ""}
+</svg>`;
+}
+
+/* Səadət's hideout: "raid" (door kicked in, two men down), "saadet" (gun on her), "shot" (your body falls) */
+function hideout(mode) {
+  const bricks = Array.from({length: 15}, (_, i) => `<line x1="0" y1="${20 + i * 24}" x2="360" y2="${20 + i * 24}" stroke="#1a1411"/>`).join("");
+  return `${SVG_OPEN}
+  <defs><radialGradient id="bulb" cx="50%" cy="22%" r="60%"><stop offset="0" stop-color="${GLOW}" stop-opacity=".35"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#120e0c"/>
+  ${bricks}
+  <rect x="0" y="360" width="360" height="280" fill="#0d0a09"/>
+  <rect width="360" height="640" fill="url(#bulb)" class="flicker"/>
+  <line x1="180" y1="0" x2="180" y2="120" stroke="#222" stroke-width="2"/><circle cx="180" cy="128" r="8" fill="${GLOW}" class="flicker"/>
+  <g class="push">
+    <rect x="20" y="150" width="70" height="210" fill="${mode === 'raid' ? '#cfd8ea' : '#1a1512'}" opacity="${mode === 'raid' ? .45 : 1}"/>
+    ${mode === "saadet" ? `<path d="M196 300 C190 250 196 216 210 212 C224 216 230 250 224 300Z" fill="#0a0808"/><path d="M194 202 C194 176 226 176 226 202 L230 246 L190 246Z" fill="#0a0808"/>` : ""}
+    <rect x="110" y="300" width="170" height="14" fill="#3a2a1a"/><rect x="120" y="314" width="10" height="70" fill="#2a1f15"/><rect x="260" y="314" width="10" height="70" fill="#2a1f15"/>
+    <rect x="150" y="290" width="22" height="10" fill="#6f8a4a"/><rect x="176" y="288" width="22" height="12" fill="#7d9a52"/><rect x="214" y="291" width="20" height="9" fill="#6f8a4a"/>
+    ${mode === "raid" ? `<path d="M60 380 L170 370 L172 388 L58 396Z" fill="#050404"/><circle cx="50" cy="388" r="11" fill="#050404"/>
+      <path d="M200 372 L310 364 L312 382 L198 390Z" fill="#050404"/><circle cx="322" cy="372" r="11" fill="#050404"/>` : ""}
+    ${mode === "saadet" ? `<path d="M296 640 C296 420 306 360 330 352 C354 360 364 420 364 640Z" fill="#030303"/><circle cx="332" cy="330" r="22" fill="#030303"/>
+      <path d="M318 366 L238 354 L238 345 L318 354Z" fill="#030303"/><rect x="226" y="342" width="16" height="9" fill="#030303"/>` : ""}
+    ${mode === "shot" ? `<path d="M110 400 L250 392 L252 412 L108 420Z" fill="#030303"/><circle cx="266" cy="398" r="14" fill="#030303"/>
+      <path d="M196 396 C190 356 200 340 214 338 C228 340 236 356 232 396Z" fill="#0a0808"/><ellipse cx="214" cy="326" rx="12" ry="14" fill="#0a0808"/>
+      <rect x="40" y="180" width="30" height="180" fill="#030303"/><circle cx="55" cy="168" r="13" fill="#030303"/>
+      <rect width="360" height="640" fill="#5a0d0d" opacity=".25"/>` : ""}
+  </g>
+  ${mode !== "saadet" ? `<rect width="360" height="640" fill="#fff0c8" class="flash"/>` : ""}
+</svg>`;
+}
+
+/* The news: TV off, mother on the floor, father against the wall, Onyx between them */
+function griefRoom() {
+  return `${SVG_OPEN}
+  <defs><radialGradient id="gl" cx="20%" cy="45%" r="60%"><stop offset="0" stop-color="${GLOW}" stop-opacity=".3"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#0b0d12"/>
+  <g class="push">
+    <rect y="400" width="360" height="240" fill="#10131a"/>
+    <rect width="360" height="640" fill="url(#gl)"/>
+    <rect x="50" y="250" width="6" height="150" fill="#2a2016"/><polygon points="36,250 70,250 62,222 44,222" fill="${GLOW}" opacity=".8"/>
+    <rect x="280" y="300" width="80" height="56" fill="#07080b" stroke="#1c2130"/>
+    <path d="M232 400 C230 330 236 280 250 270 C264 280 270 330 268 400Z" fill="#06070a"/><circle cx="250" cy="256" r="15" fill="#06070a"/>
+    <path d="M100 400 C94 350 110 322 140 320 C166 322 176 350 170 400Z" fill="#06070a"/><circle cx="148" cy="318" r="15" fill="#06070a"/>
+    <rect x="118" y="352" width="8" height="12" fill="#cfd8ea" opacity=".8"/>
+    <g fill="#030304"><path d="M186 400 C180 370 190 356 202 356 C214 356 224 370 218 400Z"/><circle cx="202" cy="350" r="13"/><polygon points="192,345 190,330 200,341"/><polygon points="212,345 214,330 204,341"/></g>
+    ${catEyes(197, 207, 349, 2.4, 3)}
+  </g>
+</svg>`;
+}
+
+/* Animal shelter: bars in front, eyes glowing in the dark behind */
+function shelter() {
+  const eyes = [[60,140],[260,110],[300,250],[40,290],[140,90],[220,190]].map(([x, y], i) =>
+    `<g class="blink" style="animation-delay:${i * .4}s;animation-duration:${3 + i * .7}s"><ellipse cx="${x}" cy="${y}" rx="3" ry="2.4" fill="#b9d36a" opacity=".7"/><ellipse cx="${x + 12}" cy="${y}" rx="3" ry="2.4" fill="#b9d36a" opacity=".7"/></g>`).join("");
+  const bars = Array.from({length: 13}, (_, i) => `<rect x="${i * 30}" y="0" width="5" height="640" fill="#2a2e36"/>`).join("");
+  return `${SVG_OPEN}
+  <rect width="360" height="640" fill="#08090c"/>
+  <g class="push">
+    ${eyes}
+    <rect y="360" width="360" height="280" fill="#0e1014"/>
+    <g fill="#030304"><path d="M150 370 C140 320 160 290 180 290 C200 290 220 320 210 370Z"/><circle cx="180" cy="282" r="22"/><polygon points="162,272 160,246 176,264"/><polygon points="198,272 200,246 184,264"/></g>
+    ${catEyes(172, 188, 281, 4, 5)}
+  </g>
+  ${bars}
+  <rect y="60" width="360" height="6" fill="#2a2e36"/><rect y="390" width="360" height="6" fill="#2a2e36"/>
+</svg>`;
+}
+
+/* The dead man on a metal table: a hand rises, yellow cat eyes open */
+function manWake() {
+  return `${SVG_OPEN}
+  <defs><radialGradient id="mw" cx="50%" cy="30%" r="60%"><stop offset="0" stop-color="#9fb3d9" stop-opacity=".25"/><stop offset="1" stop-color="#9fb3d9" stop-opacity="0"/></radialGradient></defs>
+  <rect width="360" height="640" fill="#0a0b0e"/>
+  <rect width="360" height="640" fill="url(#mw)"/>
+  <line x1="180" y1="0" x2="180" y2="90" stroke="#1d2230" stroke-width="2"/>
+  <rect x="160" y="90" width="40" height="6" fill="#cfd8ea" class="flicker"/>
+  <g class="push">
+    <rect y="360" width="360" height="280" fill="#0e1014"/>
+    <rect x="50" y="330" width="260" height="10" fill="#4a5060"/><rect x="70" y="340" width="6" height="60" fill="#3a3f4a"/><rect x="284" y="340" width="6" height="60" fill="#3a3f4a"/>
+    <path d="M104 330 C110 304 150 298 170 306 C220 300 272 304 300 330Z" fill="#cfd2d8" opacity=".85"/>
+    <circle cx="86" cy="316" r="15" fill="#6b6258"/>
+    <rect x="296" y="320" width="14" height="8" fill="#e9e2d0" transform="rotate(-15 303 324)"/>
+    <g class="late"><path d="M200 306 C204 270 210 250 214 236 L222 238 C220 254 214 276 210 306Z" fill="#8d8478"/>${catEyes(80, 91, 313, 2.6, 3.2)}</g>
+  </g>
+</svg>`;
+}
+
+/* The road out of town: a man walks into the night */
+function road() {
+  const lamp = (x, y, h) => `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - h}" stroke="#1d2230" stroke-width="3"/><circle cx="${x}" cy="${y - h}" r="${h / 3}" fill="url(#rl)" class="flicker-slow"/><circle cx="${x}" cy="${y - h}" r="2.5" fill="${GLOW}"/>`;
+  return `${SVG_OPEN}
+  <defs>
+    <linearGradient id="rsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05070d"/><stop offset="1" stop-color="#141b2c"/></linearGradient>
+    <radialGradient id="rl"><stop offset="0" stop-color="${GLOW}" stop-opacity=".5"/><stop offset="1" stop-color="${GLOW}" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="360" height="640" fill="url(#rsky)"/>
+  <circle cx="270" cy="110" r="22" fill="#e9e2d0" opacity=".8"/>
+  <g class="walk">
+    <rect y="300" width="360" height="340" fill="#0b0d12"/>
+    <polygon points="0,640 360,640 196,300 164,300" fill="#141822"/>
+    <line x1="180" y1="305" x2="180" y2="640" stroke="#3a3f4a" stroke-width="3" stroke-dasharray="14 18"/>
+    ${lamp(60, 420, 150)}${lamp(130, 330, 60)}${lamp(300, 420, 150)}${lamp(230, 330, 60)}
+    <g fill="#030304"><circle cx="180" cy="300" r="9"/><path d="M168 312 C168 300 192 300 192 312 L190 352 L170 352Z"/><path d="M171 352 L168 384 L175 384 L180 356 L185 384 L192 384 L189 352Z"/></g>
+  </g>
+</svg>`;
+}
+
+/* ---------- Audio: generated with Web Audio, no files ---------- */
+const A = {ctx: null, master: null, noise: null, amb: null, on: true};
+
+function audioInit() {
+  if (A.ctx) return;
+  try {
+    const C = window.AudioContext || window.webkitAudioContext;
+    A.ctx = new C();
+    A.master = A.ctx.createGain();
+    A.master.gain.value = A.on ? 0.9 : 0;
+    A.master.connect(A.ctx.destination);
+    const b = A.ctx.createBuffer(1, A.ctx.sampleRate * 2, A.ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    A.noise = b;
+  } catch (e) { A.ctx = null; }
+}
+const now = () => A.ctx.currentTime;
+function noiseSrc() { const s = A.ctx.createBufferSource(); s.buffer = A.noise; s.loop = true; return s; }
+function filt(type, f, q = 1) { const x = A.ctx.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; return x; }
+function envGain(t, peak, att, dec) {
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(peak, t + att);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + att + dec);
+  return g;
+}
+
+const sfx = {
+  thump(delay = 0, vol = .5) {
+    if (!A.ctx) return; const t = now() + delay;
+    const o = A.ctx.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(38, t + .25);
+    const g = envGain(t, vol, .01, .3); o.connect(g).connect(A.master); o.start(t); o.stop(t + .4);
+  },
+  creak(delay = 0) {
+    if (!A.ctx) return; const t = now() + delay;
+    const o = A.ctx.createOscillator(); o.type = "sawtooth";
+    o.frequency.setValueAtTime(150, t); o.frequency.linearRampToValueAtTime(95, t + 1.4); o.frequency.linearRampToValueAtTime(120, t + 2.4);
+    const am = A.ctx.createOscillator(); am.frequency.value = 22;
+    const amG = A.ctx.createGain(); am.connect(amG);
+    const g = envGain(t, .16, .25, 2.3); amG.gain.value = .12; amG.connect(g.gain);
+    o.connect(filt("bandpass", 950, 5)).connect(g).connect(A.master);
+    o.start(t); am.start(t); o.stop(t + 2.7); am.stop(t + 2.7);
+  },
+  whisper(delay = 0) {
+    if (!A.ctx) return;
+    [0, .45, .8].forEach((d, i) => {
+      const t = now() + delay + d, n = noiseSrc();
+      const g = envGain(t, .09 - i * .02, .08, .35);
+      n.connect(filt("bandpass", 2600 + i * 400, 1.2)).connect(g).connect(A.master);
+      n.start(t); n.stop(t + .5);
+    });
+  },
+  click() {
+    if (!A.ctx) return; const t = now();
+    const o = A.ctx.createOscillator(); o.type = "square"; o.frequency.value = 1100;
+    const g = envGain(t, .12, .003, .05); o.connect(g).connect(A.master); o.start(t); o.stop(t + .08);
+  },
+  tick() {
+    if (!A.ctx) return; const t = now();
+    const o = A.ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 1700 + Math.random() * 300;
+    const g = envGain(t, .018, .002, .03); o.connect(g).connect(A.master); o.start(t); o.stop(t + .05);
+  },
+  select() {
+    if (!A.ctx) return; const t = now();
+    const o = A.ctx.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(660, t); o.frequency.exponentialRampToValueAtTime(330, t + .25);
+    const g = envGain(t, .1, .01, .3); o.connect(g).connect(A.master); o.start(t); o.stop(t + .35);
+  },
+  boom() {
+    if (!A.ctx) return; const t = now();
+    const o = A.ctx.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(55, t); o.frequency.exponentialRampToValueAtTime(28, t + 2.5);
+    const g = envGain(t, .5, .03, 2.8); o.connect(g).connect(A.master); o.start(t); o.stop(t + 3);
+    const n = noiseSrc(), ng = envGain(t, .12, .02, 1.5);
+    n.connect(filt("lowpass", 300)).connect(ng).connect(A.master); n.start(t); n.stop(t + 1.6);
+  },
+  steps(count = 6, gap = .55) { for (let i = 0; i < count; i++) sfx.thump(i * gap, .18); },
+  shots(delay = 0) {
+    if (!A.ctx) return;
+    [0, .16, .3, .85, 1, 1.5].forEach(d => {
+      const t = now() + delay + d, n = noiseSrc(), g = envGain(t, .28, .002, .16);
+      n.connect(filt("bandpass", 1400, .8)).connect(g).connect(A.master); n.start(t); n.stop(t + .22);
+      sfx.thump(delay + d, .3);
+    });
+  },
+  meow(delay = 0) {
+    if (!A.ctx) return; const t = now() + delay;
+    const o = A.ctx.createOscillator(); o.type = "sawtooth";
+    o.frequency.setValueAtTime(480, t); o.frequency.linearRampToValueAtTime(820, t + .18); o.frequency.linearRampToValueAtTime(560, t + .6);
+    const f = filt("bandpass", 900, 3);
+    f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(1800, t + .2); f.frequency.linearRampToValueAtTime(800, t + .6);
+    const g = envGain(t, .14, .05, .6); o.connect(f).connect(g).connect(A.master); o.start(t); o.stop(t + .7);
+  },
+  crash(delay = 0) {
+    if (!A.ctx) return;
+    [0, .12, .3, .45].forEach((d, i) => {
+      const t = now() + delay + d, n = noiseSrc(), g = envGain(t, .22, .002, .25);
+      n.connect(filt("highpass", 2500)).connect(g).connect(A.master); n.start(t); n.stop(t + .3);
+      const o = A.ctx.createOscillator(); o.type = "sine"; o.frequency.value = 2600 + i * 700;
+      const og = envGain(t, .05, .002, .4); o.connect(og).connect(A.master); o.start(t); o.stop(t + .45);
+    });
+    sfx.thump(delay, .4);
+  },
+  knock(delay = 0) { [0, .3, .6].forEach(d => sfx.thump(delay + d, .5)); },
+  breath(delay = 0) {
+    if (!A.ctx) return;
+    [0, 2.2, 4.4].forEach(d => {
+      const t = now() + delay + d, n = noiseSrc(), g = A.ctx.createGain();
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.06, t + .8); g.gain.linearRampToValueAtTime(.0001, t + 1.8);
+      n.connect(filt("bandpass", 700, 1.5)).connect(g).connect(A.master); n.start(t); n.stop(t + 1.9);
+    });
+  }
+};
+
+function ambient(kind) {
+  stopAmbient();
+  if (!A.ctx) return;
+  const t = now(), out = A.ctx.createGain();
+  out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(1, t + 2); out.connect(A.master);
+  const nodes = [], radio = kind === "radio" || kind === "listen" || kind === "tv";
+  const base = kind === "run" ? 41 : kind === "off" ? 46 : kind === "day" ? 65 : 55;
+  const lp = filt("lowpass", kind === "run" ? 420 : 230); lp.connect(out);
+  const dg = A.ctx.createGain(); dg.gain.value = kind === "off" || kind === "day" ? .03 : .05; dg.connect(lp);
+  [base, base * 1.012, base * 1.5].forEach(f => {
+    const o = A.ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(dg); o.start(); nodes.push(o);
+  });
+  const n = noiseSrc(), ng = A.ctx.createGain();
+  ng.gain.value = kind === "tv" ? .025 : radio ? .05 : kind === "day" ? .03 : .015;
+  n.connect(filt("bandpass", radio ? 1600 : 500, radio ? 3 : .7)).connect(ng).connect(out); n.start(); nodes.push(n);
+  if (radio) {
+    const lfo = A.ctx.createOscillator(), lg = A.ctx.createGain();
+    lfo.frequency.value = kind === "listen" ? 3 : kind === "tv" ? 11 : 7; lg.gain.value = .035; lfo.connect(lg).connect(ng.gain); lfo.start(); nodes.push(lfo);
+  }
+  let timer = null;
+  if (kind === "run") timer = setInterval(() => { sfx.thump(0, .45); sfx.thump(.18, .3); }, 620);
+  A.amb = {out, nodes, timer};
+}
+function stopAmbient() {
+  const a = A.amb; if (!a) return; A.amb = null;
+  clearInterval(a.timer);
+  const t = now();
+  a.out.gain.cancelScheduledValues(t); a.out.gain.setValueAtTime(a.out.gain.value, t); a.out.gain.linearRampToValueAtTime(0, t + .8);
+  setTimeout(() => { a.nodes.forEach(x => { try { x.stop(); } catch (e) {} }); a.out.disconnect(); }, 1000);
+}
+
+/* ---------- Story ---------- */
+const S = {
+  start: { svg: () => corridor({group: "push"}), amb: "corridor", fx: () => sfx.whisper(4),
+    lines: ["Gecə saat 03:17.", "Tanımadığın bir evin dəhlizindəsən. Bura necə gəldiyini xatırlamırsan.", "Yəqin yuxudur… Dəhlizin sonundakı qapının altından işıq sızır."],
+    choices: [["Qapını aç", "open"], ["Pəncərəyə yaxınlaş", "window"]] },
+  open: { svg: () => room("enter"), amb: "radio", fx: () => sfx.creak(.4),
+    lines: ["Qapı cırıldayaraq açılır.", "Otaq boşdur. Masada köhnə radio xışıldayır.", "Xışıltının içində kiminsə səsi var: «üç… on… yeddi…»"],
+    choices: [["Radionu söndür", "off"], ["Qulaq as", "ghost"]] },
+  off: { svg: () => room("dark"), amb: "off", fx: () => { sfx.click(); sfx.breath(1.5); },
+    lines: ["Düyməni basırsan. Səs kəsilir.", "Sükutda qonşu otaqdan ağır, xırıltılı nəfəs eşidilir.", "Divarın o tayında kimsə var."],
+    choices: [["Səsə get", "husband"], ["Pəncərəyə yaxınlaş", "window"]] },
+  husband: { svg: sickroom, amb: "off", fx: () => sfx.breath(.5),
+    lines: ["Yataqda arıq, qoca bir kişi uzanıb. Gözləri açıqdır, amma səni görmür.", "Divarda qara lentli bir şəkil: yaşlı qadın. Altında yazılıb: «Sona».", "Arxanda radio öz-özünə yenidən xışıldamağa başlayır."],
+    choices: [["Radioya qayıt", "ghost"], ["Pəncərəyə yaxınlaş", "window"]] },
+  ghost: { svg: () => room("listen"), amb: "listen", fx: () => sfx.whisper(4.5),
+    lines: ["Xışıltı yavaş-yavaş pıçıltıya çevrilir.", "Qapının ağzında bir kölgə dayanıb. Qadın kölgəsi.", "«Sən məni görürsən…» — deyir və barmağı ilə pəncərəni göstərir."],
+    choices: [["Göstərdiyi yerə bax", "window"], ["Qaç", "run"]] },
+  run: { svg: () => corridor({group: "run", red: true}), amb: "run",
+    lines: ["Qaçırsan. Divarlar qızarır, lampalar sönür.", "Dəhliz bitmir. Hər döngədə qarşına yenə bir pəncərə çıxır.", "Axırda dayanmağa məcbur olursan."],
+    choices: [["Pəncərəyə bax", "window"]] },
+  window: { svg: windowView, amb: "corridor",
+    lines: ["Pəncərədən küçə görünür. Küçənin o tayında… sənin evin.", "Öz otağının pəncərəsində kimsə dayanıb, sənə baxır.", "Gözlərini qıyırsan. Bu sənsən."],
+    choices: [["Çölə çıx, evinə get", "home"]] },
+  home: { svg: homeView, amb: "tv", fx: () => sfx.steps(5),
+    lines: ["Küçəni keçirsən. Evinin qapısı kilidli deyil.", "Qonaq otağında valideynlərin televizora baxır. Divardakı saat: 03:17.", "«Ana!» — qışqırırsan. Heç kim başını çevirmir."],
+    choices: [["Otağına get", "bed"], ["Atanın çiyninə toxun", "touch"]] },
+  touch: { svg: homeView, amb: "tv",
+    lines: ["Əlin atanın çiynindən tüstü kimi keçir.", "O, sadəcə üşüyürmüş kimi yaxasını düzəldir.", "Səni nə görürlər, nə də eşidirlər."],
+    choices: [["Otağına get", "bed"]] },
+  bed: { svg: () => bedroom("self"), amb: "off", fx: () => sfx.breath(2),
+    lines: ["Otağında, öz yatağında… sən yatırsan.", "Üzün solğundur. Bir anlıq öldüyünü düşünürsən.", "Amma yorğan yavaşca qalxıb enir. Nəfəs alırsan. Ölməmisən."],
+    choices: [["Bədəninə toxun", "visit"], ["Arxana bax", "visit"]] },
+  visit: { svg: () => bedroom("ghost"), amb: "listen", fx: () => sfx.whisper(3),
+    lines: ["Arxanda radio xışıltısı. Amma bu otaqda radio yoxdur.", "Küncdə o kölgə dayanıb. Bu dəfə üzü görünür: yaşlı bir qadın.", "«Qorxma. Məni görən yeganə insan sənsən. Adım Sonadır.»"],
+    choices: [["Sənə nə olub?", "truth"]] },
+  truth: { svg: bulletWall, amb: "off", fx: () => sfx.shots(1),
+    lines: ["«Qızımın qumar borcu var idi. Bir gecə onu öldürməyə gəldilər.»", "«Evi gülləyə tutdular. Güllələr qızıma yox, mənə dəydi.»", "«Yoldaşım o gecədən yataqdan qalxmır.»", "«Qızım isə yasımda pulları götürüb qaçdı.»"],
+    choices: [["Məndən nə istəyirsən?", "deal"]] },
+  deal: { svg: () => corridor({group: "push", extra: stash()}), amb: "corridor", fx: () => sfx.creak(.6),
+    lines: ["Sona xala səni yenidən o evin dəhlizinə aparır. Döşəmədən bir taxta qalxır.", "Altında bağlama-bağlama pul var. «Qızım bunları tapa bilmədi.»", "«Qızımı və bu işi edənləri tapmağa kömək et. Bu pullar sənin olacaq.»"],
+    choices: [["Razıyam", "morning"], ["Bunu edə bilmərəm", "morning"]] },
+  morning: { svg: houseDay, amb: "day", fx: () => sfx.whisper(5),
+    lines: ["Səhər. Öz yatağında oyanırsan. Yuxu idi… elə deyilmi?", "Məhəllənin o biri başında həmin ev dayanır. Divarlarında güllə izləri.", "İçəridə nə radio var, nə kölgə. Amma divarlardan pıçıltı gəlir."],
+    choices: [["Dəhlizə keç", "note"]] },
+  note: { svg: paper, amb: "day",
+    lines: ["Dəhlizdə, o taxtanın üstündə bir kağız var.", "Xətt titrəkdir, mürəkkəb hələ qurumayıb.", "«Mənə kömək etmək üçün axşam yuxuya get. Mən səni öz yanıma çəkəcəm.»"],
+    choices: [["Axşam yuxuya get", "sleep"], ["Kağızı yandır", "burn"]] },
+  sleep: { end: "Bədən", svg: () => bedroom("end"), amb: "listen", fx: () => sfx.whisper(4),
+    lines: ["Axşam gözlərini yumursan. Xışıltı yaxınlaşır.", "«Sağ ol,» — Sona xala pıçıldayır. — «Artıq bədənin mənim ruhumdur.»", "«Sənin ruhun isə evindəki çox sevimli pişiyinin içindədir.»", "Yataqda gözlərin açılır. Amma onları sən açmırsan."] },
+  burn: { end: "Əks", svg: mirror, amb: "off",
+    lines: ["Kağız alovlanır. Pıçıltılar susur.", "Gecə su içməyə qalxırsan, güzgünün qarşısından keçirsən.", "Əksin dayanır. Sənə baxıb gülümsəyir. Sən gülümsəmirsən."] },
+
+  /* ===== Bölüm 2 · Ruhların köçü ===== */
+  wake: { svg: () => catRoom("big"), amb: "day",
+    lines: ["Səhər. Gözlərini açırsan.", "Hər şey nəhəngdir: yatağın ayağı divar kimidir, qapının dəstəyi əlçatmazdır.", "Ayağa qalxanda yerə dörd ayaq üstə basırsan."],
+    choices: [["Güzgüyə get", "mirror2"], ["Səslən", "meow"]] },
+  meow: { svg: () => catRoom("big"), amb: "day", fx: () => sfx.meow(1.2),
+    lines: ["«Ana!» deyə qışqırmaq istəyirsən.", "Boğazından yalnız nazik bir səs çıxır: «Miyav.»", "Qorxuya düşüb güzgüyə tərəf qaçırsan."],
+    choices: [["Güzgüyə bax", "mirror2"]] },
+  mirror2: { svg: () => catMirror("cat"), amb: "day",
+    lines: ["Güzgüdən sənə iki sarı göz baxır.", "Qara tük, kiçik qulaqlar… Bu Onyxdur. Sənin sevimli pişiyin.", "Ruh sənindir, amma bədən onundur. Danışa bilmirsən."],
+    choices: [["Arxana bax", "sona2"]] },
+  sona2: { svg: () => catMirror("sona"), amb: "listen", fx: () => sfx.whisper(2),
+    lines: ["Arxanda sən dayanmısan. Sənin bədənin. Amma baxışı yaddır.", "«Qorxma,» — Sona xala sənin səsinlə deyir. — «Bu sadəcə müvəqqətidir.»", "«Bədənindən istifadə edib intiqamımı alacağam. Sonra hər şey əvvəlki kimi olacaq.»"],
+    choices: [["«Belə razılaşmamışdıq!»", "deal2"]] },
+  deal2: { svg: () => catMirror("sona"), amb: "listen", fx: () => sfx.meow(.3),
+    lines: ["Sən miyovlayırsan, amma Sona hər sözünü eşidir:", "«Mən sənə kömək edəcəkdim! Bu aləmdə sənin qolun olacaqdım!»", "Sona gülümsəyir: «Elə də oldu. Sadəcə belə olacağını düşünmürdün.»"],
+    choices: [["Onun arxasınca get", "breakfast"]] },
+  breakfast: { svg: () => kitchen("calm"), amb: "day",
+    lines: ["Sənin bədənin səhər yeməyinə gedir. Sən də arxasınca qaçırsan.", "Sən heç vaxt çaya şəkər atmazdın. «Sən» isə beş qaşıq atır, susub boşluğa baxır.", "Ana atana pıçıldayır: «Yəqin yenə depressiyadır…»"],
+    choices: [["Stolun altına gir", "spider"], ["Anaya sürtün", "spider"]] },
+  spider: { svg: () => kitchen("spider"), amb: "run", fx: () => sfx.crash(.4),
+    lines: ["Yerdə bir hörümçək qaçır.", "Sənin bədənin qorxub qışqırır və stolun üstündəki hər şeyi yerə çırpır.", "«Nə oldu?!» Cavab vermədən qapını çırpıb evdən çıxır."],
+    choices: [["Ona səslən", "cry"]] },
+  cry: { svg: () => kitchen("cry"), amb: "off", fx: () => sfx.meow(.8),
+    lines: ["«Qayıt!» — qışqırırsan. Amma ailən səni eşitmir. Yalnız miyovlama.", "Ana ağlayır: «O axı hörümçəkləri sevirdi… Birdən-birə nə oldu?»", "Sən bilirsən nə olub. Amma deyə bilmirsən."],
+    choices: [["Bu vaxt şəhərin o biri başında…", "raid"]] },
+  raid: { svg: () => hideout("raid"), amb: "run", fx: () => sfx.shots(.8),
+    lines: ["Sona Səadətgilin yerini tapıb. Sənin əllərində silah var.", "Qapını təpiklə açır. İki adam yerə yıxılır.", "Səadətin otağı dəhlizin sonundadır."],
+    choices: [["Otağa gir", "saadet"]] },
+  saadet: { svg: () => hideout("saadet"), amb: "corridor",
+    lines: ["Səadət masanın arxasında o adamlarla birgə pul sayır. Demə, onlarla əlbir imiş.", "Silah ona tuşlanır. «Qızım… Səadət.»", "Səadət gülür: «Sən kimsən?» — «Mən sənin ananam.»"],
+    choices: [["Uşaqlıq adı ilə səslən", "proof"], ["Bir xatirə danış", "proof"]] },
+  proof: { svg: () => hideout("saadet"), amb: "listen",
+    lines: ["«Balaca olanda səni «Sadəm» çağırardım. Altı yaşında ərik ağacından yıxılıb qolunu sındırmışdın.»", "Səadət donur. 22 yaşlı bir gənc bunları haradan bilə bilər?", "Gözləri dolur. Anasını tanıyır, şoka düşüb yerə yıxılır."],
+    choices: [["Səadətə yaxınlaş", "shot"]] },
+  shot: { svg: () => hideout("shot"), amb: "off", fx: () => { sfx.creak(0); sfx.thump(1.4, .7); },
+    lines: ["Arxada qapı cırıldayır. Bir güllə.", "Sənin bədənin yerə çırpılır.", "Səadət ağlayaraq qışqırır: «O mənim anam idi!» — və öz adamını vurur."],
+    choices: [["Evdə Onyx gözləyir", "ghostHome"]] },
+  ghostHome: { svg: () => catRoom("ghost"), amb: "listen", fx: () => sfx.whisper(3),
+    lines: ["Axşam. Pişik bədənində qapının ağzında gözləyirsən.", "Sona xala qayıdır. Bu dəfə yenə kölgədir.", "«Bağışla məni… Bədənini orada öldürdüm. Sən artıq bu pişiyin bədənində həbssən.»"],
+    choices: [["Ona hücum et", "panic"], ["Qaç", "panic"]] },
+  panic: { svg: () => catRoom("panic"), amb: "run", fx: () => { sfx.meow(0); sfx.meow(.9); sfx.crash(1.6); },
+    lines: ["Şoka düşürsən. Divardan divara atılırsan, pərdələri cırırsan.", "Sona xala yoxa çıxıb. Otaqda yalnız sənin miyovlaman qalır.", "Üç gün keçir."],
+    choices: [["Qapı döyülür", "news"]] },
+  news: { svg: griefRoom, amb: "off", fx: () => sfx.knock(.3),
+    lines: ["Polis gəlib. Sənin bədənini tapıblar.", "Ana yerə çökür. Ata divara söykənib ağlayır.", "Sən onların ayaqları arasında dayanmadan danışırsan: «Mən buradayam!» Onlar yalnız miyovlama eşidir."],
+    choices: [["Danışmağa davam et", "days"]] },
+  days: { svg: griefRoom, amb: "off", fx: () => { sfx.meow(.5); sfx.meow(2.5); },
+    lines: ["Günlər keçir. Sən susmursan.", "Ata əsəbiləşir: «Oğlumuz yoxdur. Bu pişiyə kim baxacaq?»", "Səni səbətə qoyub küçə heyvanları sığınacağına aparırlar."],
+    choices: [["Səbətdən çıxmağa çalış", "shelter"]] },
+  shelter: { svg: shelter, amb: "off", fx: () => sfx.meow(3),
+    lines: ["Dəmir barmaqlıqlar. Qaranlıqda onlarla parlayan göz.", "Bir neçə gün keçir. Artıq heç kim səni axtarmır.", "Amma şəhərin o biri başında qəribə bir şey baş verir…"],
+    choices: [["Bax", "awaken"]] },
+  awaken: { svg: manWake, amb: "listen", fx: () => sfx.breath(2),
+    lines: ["Səadətin öldürdüyü adamın soyuq bədənində barmaqlar tərpənir.", "İndi onun içində başqa bir ruh var: əsl Onyx. Sənin pişiyin.", "Əllərinə baxır. Özünü dərk etməyə başlayır."],
+    choices: [["Onyx ayağa qalxır", "road"]] },
+  road: { end: "Onyx yola düşür", svg: road, amb: "corridor", fx: () => sfx.steps(10, .6),
+    lines: ["Onyx səni sevirdi. Sənə bağlı idi.", "İndi insan bədənində, gecənin içində yola düşür.", "Səni tapmaq. Səni xilas etmək üçün…"] }
+};
+
+const EPISODES = {
+  1: {start: "start", name: "Sona xalanın hekayəsi"},
+  2: {start: "wake", name: "Ruhların köçü"}
+};
+let ep = 1;
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), sceneEl = $("scene"), cap = $("cap"), choicesEl = $("choices"),
+      endEl = $("end"), startEl = $("start"), bars = $("bars"), hint = $("hint");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let path = [], picks = [], runId = 0, skip = false, started = false;
+
+const wait = ms => new Promise(r => setTimeout(r, skip ? 0 : ms));
+
+function renderBars(fill) {
+  const total = Math.max(3, path.length + (S[path.at(-1)].end ? 0 : 1));
+  bars.innerHTML = Array.from({length: total}, (_, i) =>
+    `<div class="bar"><i style="width:${i < path.length - 1 ? 100 : i === path.length - 1 ? fill * 100 : 0}%"></i></div>`).join("");
+}
+function setFill(f) { const b = bars.children[path.length - 1]; if (b) b.firstChild.style.width = f * 100 + "%"; }
+
+async function play(id) {
+  const sc = S[id], my = ++runId;
+  path.push(id); skip = reduced;
+  sceneEl.innerHTML = sc.svg();
+  cap.innerHTML = ""; choicesEl.hidden = true; endEl.hidden = true;
+  renderBars(0);
+  ambient(sc.amb);
+  sc.fx?.();
+  await wait(900);
+  for (let i = 0; i < sc.lines.length; i++) {
+    if (my !== runId) return;
+    cap.querySelectorAll("p").forEach(p => { p.className = "old"; });
+    const p = document.createElement("p"); p.className = "cur"; cap.append(p);
+    const text = sc.lines[i];
+    for (let c = 1; c <= text.length; c++) {
+      if (my !== runId) return;
+      if (skip) { p.textContent = text; break; }
+      p.textContent = text.slice(0, c);
+      if (text[c - 1] !== " ") sfx.tick();
+      setFill((i + c / text.length) / sc.lines.length);
+      await wait(38);
+    }
+    setFill((i + 1) / sc.lines.length);
+    if (my !== runId) return;
+    // Reading pause: longer lines stay on screen longer before the next one types out
+    await wait(i < sc.lines.length - 1 ? 900 + text.length * 22 : 600);
+  }
+  if (my !== runId) return;
+  sc.end ? showEnd(sc) : showChoices(sc);
+}
+
+function showChoices(sc) {
+  choicesEl.innerHTML = `<p class="ask">Qərar səninlə</p>`;
+  sc.choices.forEach(([label, next], i) => {
+    const b = document.createElement("button");
+    b.className = "choice"; b.type = "button"; b.id = "choice-" + next;
+    b.innerHTML = `${label}<span>${i ? "B" : "A"}</span>`;
+    b.addEventListener("click", e => { e.stopPropagation(); sfx.select(); picks.push(label); play(next); });
+    choicesEl.append(b);
+  });
+  choicesEl.hidden = false;
+  choicesEl.querySelector(".choice").focus({preventScroll: true});
+}
+
+function showEnd(sc) {
+  sfx.boom();
+  const next = ep + 1, hasNext = !!EPISODES[next];
+  endEl.innerHTML = `<p class="ask">Bölüm ${ep} bitdi · Son: ${sc.end}</p>
+    <h2>${hasNext ? `Hekayə Bölüm ${next}-də davam edir.` : `Davamı Bölüm ${next}-də…`}</h2>
+    <p class="path">Seçimlərin: ${picks.join(" → ")}</p>
+    ${hasNext ? `<button class="choice primary" type="button" id="next-ep">Bölüm ${next}-yə keç<span>▶</span></button>` : ""}
+    <button class="choice" type="button" id="restart">Yenidən başla<span>↺</span></button>
+    <button class="choice" type="button" id="menu">Bölümlər<span>☰</span></button>`;
+  endEl.hidden = false;
+  const on = (id, fn) => $(id)?.addEventListener("click", e => { e.stopPropagation(); sfx.select(); fn(); });
+  on("next-ep", () => startEpisode(next));
+  on("restart", () => startEpisode(ep));
+  on("menu", toMenu);
+}
+
+function startEpisode(n) {
+  ep = n; path = []; picks = [];
+  $("ep-label").textContent = `Bölüm ${n} · ${EPISODES[n].name}`;
+  startEl.hidden = true; started = true;
+  play(EPISODES[n].start);
+}
+
+function toMenu() {
+  runId++; stopAmbient();
+  started = false; skip = false; path = []; picks = [];
+  cap.innerHTML = ""; bars.innerHTML = ""; choicesEl.hidden = true; endEl.hidden = true;
+  sceneEl.innerHTML = corridor();
+  $("ep-label").textContent = "Bölümlər";
+  startEl.hidden = false;
+}
+
+/* ---------- Controls ---------- */
+function setSound(on) {
+  A.on = on; $("tog-sound").setAttribute("aria-pressed", on);
+  if (A.master) A.master.gain.setTargetAtTime(on ? .9 : 0, now(), .1);
+}
+function begin(e) {
+  e.stopPropagation();
+  audioInit(); A.ctx?.resume?.();
+  setSound(A.on);
+  startEpisode(Number(e.currentTarget.dataset.ep));
+}
+document.querySelectorAll("[data-ep]").forEach(b => b.addEventListener("click", begin));
+$("tog-sound").addEventListener("click", () => { audioInit(); A.ctx?.resume?.(); setSound(!A.on); });
+
+function skipNow() { if (!started) return; skip = true; }
+stage.addEventListener("click", skipNow);
+stage.addEventListener("keydown", e => { if (e.key === " " && e.target === stage) { e.preventDefault(); skipNow(); } });
+
+sceneEl.innerHTML = corridor();
+</script>
+
+</body>
+</html>
